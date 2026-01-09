@@ -1,11 +1,10 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   CheckSquare, 
   Clock, 
   Users, 
-  AlertTriangle, 
-  TrendingUp,
-  Folder
+  AlertTriangle
 } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { StatCard } from '@/components/dashboard/StatCard';
@@ -15,12 +14,17 @@ import { MemberWorkloadChart } from '@/components/dashboard/MemberWorkloadChart'
 import { HoursChart } from '@/components/dashboard/HoursChart';
 import { TaskCard } from '@/components/tasks/TaskCard';
 import { TaskDetailModal } from '@/components/tasks/TaskDetailModal';
+import { TaskFormModal } from '@/components/modals/TaskFormModal';
+import { MemberDetailModal } from '@/components/team/MemberDetailModal';
 import { useApp } from '@/contexts/AppContext';
-import { Task } from '@/types';
+import { Task, TeamMember } from '@/types';
 
 export default function Dashboard() {
-  const { tasks, members, projects, sprints, selectedProjectId, selectedSprintId } = useApp();
+  const navigate = useNavigate();
+  const { tasks, members, projects, sprints, selectedProjectId, selectedSprintId, setSelectedProjectId } = useApp();
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
 
   const filteredTasks = useMemo(() => {
     let result = tasks;
@@ -58,9 +62,9 @@ export default function Dashboard() {
     const fullstack = filteredTasks.filter(t => t.type === 'fullstack').length;
 
     return [
-      { name: 'Frontend', value: frontend, color: 'hsl(217, 91%, 50%)' },
-      { name: 'Backend', value: backend, color: 'hsl(142, 71%, 45%)' },
-      { name: 'Full Stack', value: fullstack, color: 'hsl(38, 92%, 50%)' },
+      { name: 'Frontend', value: frontend, color: 'hsl(217, 91%, 50%)', filterKey: 'frontend' },
+      { name: 'Backend', value: backend, color: 'hsl(142, 71%, 45%)', filterKey: 'backend' },
+      { name: 'Full Stack', value: fullstack, color: 'hsl(38, 92%, 50%)', filterKey: 'fullstack' },
     ];
   }, [filteredTasks]);
 
@@ -70,9 +74,9 @@ export default function Dashboard() {
     const refinement = filteredTasks.filter(t => t.category === 'refinement').length;
 
     return [
-      { name: 'Feature', value: feature, color: 'hsl(142, 71%, 45%)' },
-      { name: 'Bug', value: bug, color: 'hsl(0, 84%, 60%)' },
-      { name: 'Refinamento', value: refinement, color: 'hsl(199, 89%, 48%)' },
+      { name: 'Feature', value: feature, color: 'hsl(142, 71%, 45%)', filterKey: 'feature' },
+      { name: 'Bug', value: bug, color: 'hsl(0, 84%, 60%)', filterKey: 'bug' },
+      { name: 'Refinamento', value: refinement, color: 'hsl(199, 89%, 48%)', filterKey: 'refinement' },
     ];
   }, [filteredTasks]);
 
@@ -81,6 +85,7 @@ export default function Dashboard() {
       const memberTasks = filteredTasks.filter(t => t.assignees.includes(member.id));
       const hours = memberTasks.reduce((sum, t) => sum + t.estimatedHours, 0);
       return {
+        id: member.id,
         name: member.name,
         tasks: memberTasks.length,
         hours,
@@ -89,14 +94,25 @@ export default function Dashboard() {
   }, [filteredTasks, members]);
 
   const hoursOverTime = useMemo(() => {
-    // Simplified mock data for the hours chart
-    return [
+    // Calculate hours based on actual sprint data
+    const sprintData = sprints.slice(0, 4).map(sprint => {
+      const sprintTasks = filteredTasks.filter(t => t.sprintId === sprint.id);
+      const estimated = sprintTasks.reduce((sum, t) => sum + t.estimatedHours, 0);
+      const completed = sprintTasks.filter(t => t.isDelivered).reduce((sum, t) => sum + t.estimatedHours, 0);
+      return {
+        name: sprint.name.replace('Sprint ', 'S'),
+        estimated,
+        completed,
+      };
+    });
+
+    return sprintData.length > 0 ? sprintData : [
       { name: 'Sem 1', estimated: 40, completed: 32 },
       { name: 'Sem 2', estimated: 48, completed: 45 },
       { name: 'Sem 3', estimated: 36, completed: 28 },
       { name: 'Sem 4', estimated: 52, completed: 48 },
     ];
-  }, []);
+  }, [sprints, filteredTasks]);
 
   const recentPendingTasks = useMemo(() => {
     return filteredTasks
@@ -104,6 +120,22 @@ export default function Dashboard() {
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(0, 4);
   }, [filteredTasks]);
+
+  // Handle chart clicks
+  const handleTypeClick = (filterKey: string) => {
+    navigate(`/tasks?type=${filterKey}`);
+  };
+
+  const handleCategoryClick = (filterKey: string) => {
+    navigate(`/tasks?category=${filterKey}`);
+  };
+
+  const handleMemberClick = (memberId: string) => {
+    const member = members.find(m => m.id === memberId);
+    if (member) {
+      setSelectedMember(member);
+    }
+  };
 
   return (
     <>
@@ -166,18 +198,23 @@ export default function Dashboard() {
           <TaskDistributionChart 
             data={typeDistribution} 
             title="Distribuição por Tipo"
+            onSegmentClick={handleTypeClick}
           />
 
           {/* Category Distribution */}
           <TaskDistributionChart 
             data={categoryDistribution} 
             title="Distribuição por Categoria"
+            onSegmentClick={handleCategoryClick}
           />
         </div>
 
         {/* Charts Row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <MemberWorkloadChart data={memberWorkload} />
+          <MemberWorkloadChart 
+            data={memberWorkload} 
+            onMemberClick={handleMemberClick}
+          />
           <HoursChart data={hoursOverTime} />
         </div>
 
@@ -204,10 +241,31 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Task Detail Modal */}
       <TaskDetailModal
         task={selectedTask}
         open={!!selectedTask}
         onClose={() => setSelectedTask(null)}
+        onEdit={() => {
+          if (selectedTask) {
+            setEditingTask(selectedTask);
+            setSelectedTask(null);
+          }
+        }}
+      />
+
+      {/* Task Edit Modal */}
+      <TaskFormModal
+        task={editingTask}
+        open={!!editingTask}
+        onClose={() => setEditingTask(null)}
+      />
+
+      {/* Member Detail Modal */}
+      <MemberDetailModal
+        member={selectedMember}
+        open={!!selectedMember}
+        onClose={() => setSelectedMember(null)}
       />
     </>
   );
