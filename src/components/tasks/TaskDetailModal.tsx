@@ -1,6 +1,6 @@
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { X, Clock, Calendar, AlertCircle, CheckCircle2, User, Tag, Folder, Flag } from 'lucide-react';
+import { X, Clock, Calendar, CheckCircle2, Tag, Folder, Flag, Edit } from 'lucide-react';
 import { Task } from '@/types';
 import { useApp } from '@/contexts/AppContext';
 import { AvatarPlaceholder } from '@/components/ui/avatar-placeholder';
@@ -12,15 +12,17 @@ interface TaskDetailModalProps {
   task: Task | null;
   open: boolean;
   onClose: () => void;
+  onEdit?: () => void;
 }
 
+// P0 = Critical (highest), P5 = Lowest
 const priorityLabels: Record<number, string> = {
-  0: 'Sem prioridade',
-  1: 'Muito baixa',
-  2: 'Baixa',
+  0: 'Crítica',
+  1: 'Muito Alta',
+  2: 'Alta',
   3: 'Média',
-  4: 'Alta',
-  5: 'Crítica',
+  4: 'Baixa',
+  5: 'Muito Baixa',
 };
 
 const typeLabels: Record<string, string> = {
@@ -35,7 +37,7 @@ const categoryLabels: Record<string, string> = {
   bug: 'Bug',
 };
 
-export function TaskDetailModal({ task, open, onClose }: TaskDetailModalProps) {
+export function TaskDetailModal({ task, open, onClose, onEdit }: TaskDetailModalProps) {
   const { members, projects, sprints, updateTask } = useApp();
   
   if (!task) return null;
@@ -63,6 +65,11 @@ export function TaskDetailModal({ task, open, onClose }: TaskDetailModalProps) {
               <p className="text-sm text-muted-foreground mb-1">{task.demandId}</p>
               <DialogTitle className="text-xl">{task.title}</DialogTitle>
             </div>
+            {onEdit && (
+              <Button variant="ghost" size="icon" onClick={onEdit}>
+                <Edit className="w-4 h-4" />
+              </Button>
+            )}
           </div>
         </DialogHeader>
 
@@ -81,6 +88,13 @@ export function TaskDetailModal({ task, open, onClose }: TaskDetailModalProps) {
               </span>
             )}
           </div>
+
+          {/* Description */}
+          {task.description && (
+            <div className="p-3 bg-muted/50 rounded-lg">
+              <p className="text-sm text-foreground whitespace-pre-wrap">{task.description}</p>
+            </div>
+          )}
 
           {/* Info grid */}
           <div className="grid grid-cols-2 gap-4">
