@@ -1,21 +1,17 @@
-import { Bell, Search } from 'lucide-react';
+import { useState } from 'react';
+import { Search } from 'lucide-react';
 import { useApp } from '@/contexts/AppContext';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { NotificationPanel } from '@/components/notifications/NotificationPanel';
 
 interface HeaderProps {
   title: string;
   subtitle?: string;
+  onTaskClick?: (taskId: string) => void;
 }
 
-export function Header({ title, subtitle }: HeaderProps) {
+export function Header({ title, subtitle, onTaskClick }: HeaderProps) {
   const { projects, selectedProjectId, setSelectedProjectId, sprints, selectedSprintId, setSelectedSprintId } = useApp();
 
   const filteredSprints = selectedProjectId 
@@ -31,7 +27,6 @@ export function Header({ title, subtitle }: HeaderProps) {
         </div>
 
         <div className="flex items-center gap-4">
-          {/* Filters */}
           <div className="flex items-center gap-3">
             <Select value={selectedProjectId || 'all'} onValueChange={(v) => {
               setSelectedProjectId(v === 'all' ? null : v);
@@ -43,9 +38,7 @@ export function Header({ title, subtitle }: HeaderProps) {
               <SelectContent>
                 <SelectItem value="all">Todos os projetos</SelectItem>
                 {projects.map((project) => (
-                  <SelectItem key={project.id} value={project.id}>
-                    {project.name}
-                  </SelectItem>
+                  <SelectItem key={project.id} value={project.id}>{project.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -57,30 +50,18 @@ export function Header({ title, subtitle }: HeaderProps) {
               <SelectContent>
                 <SelectItem value="all">Todas as sprints</SelectItem>
                 {filteredSprints.map((sprint) => (
-                  <SelectItem key={sprint.id} value={sprint.id}>
-                    {sprint.name}
-                  </SelectItem>
+                  <SelectItem key={sprint.id} value={sprint.id}>{sprint.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
-          {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input 
-              placeholder="Buscar..." 
-              className="pl-9 w-[200px] bg-card"
-            />
+            <Input placeholder="Buscar..." className="pl-9 w-[200px] bg-card" />
           </div>
 
-          {/* Notifications */}
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="w-5 h-5" />
-            <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
-              2
-            </span>
-          </Button>
+          <NotificationPanel onTaskClick={onTaskClick} />
         </div>
       </div>
     </header>

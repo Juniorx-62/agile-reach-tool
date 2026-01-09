@@ -1,20 +1,23 @@
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Mail, Phone, Calendar, Clock, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Mail, Phone, Calendar, Clock, CheckCircle2, AlertCircle, Edit, Trash2 } from 'lucide-react';
 import { TeamMember } from '@/types';
 import { useApp } from '@/contexts/AppContext';
 import { AvatarPlaceholder } from '@/components/ui/avatar-placeholder';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 interface MemberDetailModalProps {
   member: TeamMember | null;
   open: boolean;
   onClose: () => void;
+  onEdit?: (member: TeamMember) => void;
+  onDelete?: (member: TeamMember) => void;
 }
 
-export function MemberDetailModal({ member, open, onClose }: MemberDetailModalProps) {
+export function MemberDetailModal({ member, open, onClose, onEdit, onDelete }: MemberDetailModalProps) {
   const { tasks, projects, sprints } = useApp();
   
   if (!member) return null;
@@ -34,33 +37,48 @@ export function MemberDetailModal({ member, open, onClose }: MemberDetailModalPr
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[85vh]">
         <DialogHeader>
-          <div className="flex items-center gap-4">
-            <AvatarPlaceholder
-              name={member.name}
-              photoUrl={member.photoUrl}
-              size="xl"
-            />
-            <div>
-              <DialogTitle className="text-2xl">{member.name}</DialogTitle>
-              <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
-                <div className="flex items-center gap-1">
-                  <Mail className="w-4 h-4" />
-                  <span>{member.email}</span>
-                </div>
-                {member.phone && (
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <AvatarPlaceholder
+                name={member.name}
+                photoUrl={member.photoUrl}
+                size="xl"
+              />
+              <div>
+                <DialogTitle className="text-2xl">{member.name}</DialogTitle>
+                <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
                   <div className="flex items-center gap-1">
-                    <Phone className="w-4 h-4" />
-                    <span>{member.phone}</span>
+                    <Mail className="w-4 h-4" />
+                    <span>{member.email}</span>
                   </div>
-                )}
+                  {member.phone && (
+                    <div className="flex items-center gap-1">
+                      <Phone className="w-4 h-4" />
+                      <span>{member.phone}</span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
+            {(onEdit || onDelete) && (
+              <div className="flex gap-2">
+                {onEdit && (
+                  <Button variant="outline" size="sm" onClick={() => onEdit(member)}>
+                    <Edit className="w-4 h-4 mr-1" /> Editar
+                  </Button>
+                )}
+                {onDelete && (
+                  <Button variant="destructive" size="sm" onClick={() => onDelete(member)}>
+                    <Trash2 className="w-4 h-4 mr-1" /> Excluir
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
         </DialogHeader>
 
         <ScrollArea className="max-h-[60vh] pr-4">
           <div className="space-y-6 mt-4">
-            {/* Stats Grid */}
             <div className="grid grid-cols-4 gap-3">
               <div className="stat-card text-center">
                 <p className="text-2xl font-bold text-foreground">{memberTasks.length}</p>
@@ -80,7 +98,6 @@ export function MemberDetailModal({ member, open, onClose }: MemberDetailModalPr
               </div>
             </div>
 
-            {/* Hours Progress */}
             <div className="stat-card">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-sm font-medium">Progresso de Horas</span>
@@ -96,14 +113,11 @@ export function MemberDetailModal({ member, open, onClose }: MemberDetailModalPr
               </div>
             </div>
 
-            {/* Projects */}
             <div>
               <h4 className="text-sm font-semibold text-muted-foreground mb-3">Projetos ({projectData.length})</h4>
               <div className="flex flex-wrap gap-2">
                 {projectData.map((project) => (
-                  <span key={project!.id} className="badge-status badge-info">
-                    {project!.name}
-                  </span>
+                  <span key={project!.id} className="badge-status badge-info">{project!.name}</span>
                 ))}
                 {projectData.length === 0 && (
                   <span className="text-sm text-muted-foreground">Nenhum projeto atribuído</span>
@@ -111,55 +125,37 @@ export function MemberDetailModal({ member, open, onClose }: MemberDetailModalPr
               </div>
             </div>
 
-            {/* Tasks List */}
             <div>
-              <h4 className="text-sm font-semibold text-muted-foreground mb-3">
-                Tarefas Atribuídas ({memberTasks.length})
-              </h4>
+              <h4 className="text-sm font-semibold text-muted-foreground mb-3">Tarefas ({memberTasks.length})</h4>
               <div className="space-y-2">
-                {memberTasks.length > 0 ? (
-                  memberTasks.map((task) => {
-                    const project = projects.find(p => p.id === task.projectId);
-                    const sprint = sprints.find(s => s.id === task.sprintId);
-                    
-                    return (
-                      <div 
-                        key={task.id}
-                        className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
-                      >
-                        <div className="flex items-center gap-3">
-                          {task.isDelivered ? (
-                            <CheckCircle2 className="w-5 h-5 text-success" />
-                          ) : task.hasIncident ? (
-                            <AlertCircle className="w-5 h-5 text-warning" />
-                          ) : (
-                            <Clock className="w-5 h-5 text-muted-foreground" />
-                          )}
-                          <div>
-                            <p className={cn(
-                              'text-sm font-medium',
-                              task.isDelivered && 'line-through text-muted-foreground'
-                            )}>
-                              {task.title}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {project?.name} • {sprint?.name} • {task.estimatedHours}h
-                            </p>
-                          </div>
+                {memberTasks.map((task) => {
+                  const project = projects.find(p => p.id === task.projectId);
+                  const sprint = sprints.find(s => s.id === task.sprintId);
+                  return (
+                    <div key={task.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        {task.isDelivered ? (
+                          <CheckCircle2 className="w-5 h-5 text-success" />
+                        ) : task.hasIncident ? (
+                          <AlertCircle className="w-5 h-5 text-warning" />
+                        ) : (
+                          <Clock className="w-5 h-5 text-muted-foreground" />
+                        )}
+                        <div>
+                          <p className={cn('text-sm font-medium', task.isDelivered && 'line-through text-muted-foreground')}>
+                            {task.title}
+                          </p>
+                          <p className="text-xs text-muted-foreground">{project?.name} • {sprint?.name}</p>
                         </div>
-                        <span className={cn(
-                          'badge-status text-xs',
-                          task.isDelivered ? 'badge-success' : 'badge-warning'
-                        )}>
-                          {task.isDelivered ? 'Entregue' : 'Pendente'}
-                        </span>
                       </div>
-                    );
-                  })
-                ) : (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    Nenhuma tarefa atribuída
-                  </p>
+                      <span className={cn('badge-status text-xs', task.isDelivered ? 'badge-success' : 'badge-warning')}>
+                        {task.isDelivered ? 'Entregue' : 'Pendente'}
+                      </span>
+                    </div>
+                  );
+                })}
+                {memberTasks.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-4">Nenhuma tarefa atribuída</p>
                 )}
               </div>
             </div>

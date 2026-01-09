@@ -1,12 +1,14 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { Project, Sprint, Task, TeamMember } from '@/types';
+import React, { createContext, useContext, useState, ReactNode, useMemo } from 'react';
+import { Project, Sprint, Task, TeamMember, Notification } from '@/types';
 import { mockProjects, mockSprints, mockTasks, mockTeamMembers } from '@/data/mockData';
+import { differenceInDays } from 'date-fns';
 
 interface AppContextType {
   projects: Project[];
   sprints: Sprint[];
   tasks: Task[];
   members: TeamMember[];
+  notifications: Notification[];
   selectedProjectId: string | null;
   selectedSprintId: string | null;
   setSelectedProjectId: (id: string | null) => void;
@@ -23,6 +25,9 @@ interface AppContextType {
   addMember: (member: Omit<TeamMember, 'id' | 'createdAt'>) => void;
   updateMember: (id: string, data: Partial<TeamMember>) => void;
   deleteMember: (id: string) => void;
+  markNotificationAsRead: (id: string) => void;
+  markAllNotificationsAsRead: () => void;
+  importTasks: (newTasks: Omit<Task, 'id' | 'createdAt'>[], mode: 'overwrite' | 'append') => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -32,10 +37,36 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [sprints, setSprints] = useState<Sprint[]>(mockSprints);
   const [tasks, setTasks] = useState<Task[]>(mockTasks);
   const [members, setMembers] = useState<TeamMember[]>(mockTeamMembers);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [selectedSprintId, setSelectedSprintId] = useState<string | null>(null);
 
   const generateId = () => Math.random().toString(36).substr(2, 9);
+
+  // Generate notifications based on tasks
+  const generatedNotifications = useMemo(() => {
+    const notifs: Notification[] = [];
+    const now = new Date();
+
+    tasks.forEach(task => {
+      if (!task.isDelivered) {
+        const daysSinceCreation = differenceInDays(now, new Date(task.createdAt));
+        if (daysSinceCreation > 30) {
+          notifs.push({
+            id: `notif-overdue-${task.id}`,
+            type: 'task_overdue',
+            title: 'Tarefa em atraso',
+            message: `"${task.title}" está há ${daysSinceCreation} dias sem conclusão`,
+            taskId: task.id,
+            isRead: notifications.find(n => n.id === `notif-overdue-${task.id}`)?.isRead || false,
+            createdAt: new Date(),
+          });
+        }
+      }
+    });
+
+    return [...notifs, ...notifications.filter(n => n.type === 'task_assigned')];
+  }, [tasks, notifications]);
 
   const addProject = (project: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>) => {
     const newProject: Project = {
@@ -84,6 +115,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
       createdAt: new Date(),
     };
     setTasks(prev => [...prev, newTask]);
+
+    // Create notification for assigned members
+    task.assignees.forEach(memberId => {
+      const member = members.find(m => m.id === memberId);
+      if (member) {
+        setNotifications(prev => [...prev, {
+          id: `notif-assigned-${newTask.id}-${memberId}`,
+          type: 'task_assigned',
+          title: 'Nova tarefa atribuída',
+          message: `Você foi atribuído à tarefa "${task.title}"`,
+          taskId: newTask.id,
+          memberId,
+          isRead: false,
+          createdAt: new Date(),
+        }]);
+      }
+    });
   };
 
   const updateTask = (id: string, data: Partial<Task>) => {
@@ -111,6 +159,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setMembers(prev => prev.filter(m => m.id !== id));
   };
 
+  const markNotificationAsRead = (id: string) => {
+    setNotifications(prev => prev.map(n => 
+      n.id === id ? { ...n, isRead: true } : n
+    ));
+  };
+
+  const markAllNotificationsAsRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+  };
+
+  const importTasks = (newTasks: Omit<Task, 'id' | 'createdAt'>[], mode: 'overwrite' | 'append') => {
+    const tasksWithIds: Task[] = newTasks.map(task => ({
+      ...task,
+      id: `task-${generateId()}`,
+      createdAt: new Date(),
+    }));
+
+    if (mode === 'overwrite') {
+      setTasks(tasksWithIds);
+    } else {
+      setTasks(prev => [...prev, ...tasksWithIds]);
+    }
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -118,6 +190,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         sprints,
         tasks,
         members,
+        notifications: generatedNotifications,
         selectedProjectId,
         selectedSprintId,
         setSelectedProjectId,
@@ -134,6 +207,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         addMember,
         updateMember,
         deleteMember,
+        markNotificationAsRead,
+        markAllNotificationsAsRead,
+        importTasks,
       }}
     >
       {children}

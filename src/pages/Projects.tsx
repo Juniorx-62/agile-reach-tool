@@ -13,7 +13,9 @@ import {
   DropdownMenuItem, 
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
+import { ProjectFormModal } from '@/components/modals/ProjectFormModal';
 import { cn } from '@/lib/utils';
+import { toast } from '@/hooks/use-toast';
 
 const statusLabels: Record<ProjectStatus, string> = {
   active: 'Ativo',
@@ -29,6 +31,8 @@ const statusColors: Record<ProjectStatus, string> = {
 
 export default function Projects() {
   const { projects, sprints, tasks, deleteProject } = useApp();
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
 
   const getProjectStats = (projectId: string) => {
     const projectSprints = sprints.filter(s => s.projectId === projectId);
@@ -48,6 +52,7 @@ export default function Projects() {
   const handleDelete = (project: Project) => {
     if (confirm(`Tem certeza que deseja excluir o projeto "${project.name}"?`)) {
       deleteProject(project.id);
+      toast({ title: 'Sucesso', description: 'Projeto excluído com sucesso!' });
     }
   };
 
@@ -61,7 +66,10 @@ export default function Projects() {
       <div className="p-6 space-y-6 animate-fade-in">
         {/* Actions */}
         <div className="flex items-center justify-end">
-          <Button className="gradient-primary text-white">
+          <Button 
+            className="gradient-primary text-white"
+            onClick={() => setShowCreateModal(true)}
+          >
             <Plus className="w-4 h-4 mr-2" />
             Novo Projeto
           </Button>
@@ -99,7 +107,7 @@ export default function Projects() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setEditingProject(project)}>
                         <Edit className="w-4 h-4 mr-2" />
                         Editar
                       </DropdownMenuItem>
@@ -150,13 +158,27 @@ export default function Projects() {
         {projects.length === 0 && (
           <div className="text-center py-12">
             <p className="text-lg text-muted-foreground">Nenhum projeto cadastrado</p>
-            <Button className="mt-4 gradient-primary text-white">
+            <Button 
+              className="mt-4 gradient-primary text-white"
+              onClick={() => setShowCreateModal(true)}
+            >
               <Plus className="w-4 h-4 mr-2" />
               Criar Primeiro Projeto
             </Button>
           </div>
         )}
       </div>
+
+      <ProjectFormModal
+        open={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+      />
+
+      <ProjectFormModal
+        project={editingProject}
+        open={!!editingProject}
+        onClose={() => setEditingProject(null)}
+      />
     </>
   );
 }

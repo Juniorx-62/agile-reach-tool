@@ -28,6 +28,7 @@ export interface Task {
   demandId: string;
   priority: TaskPriority;
   title: string;
+  description?: string; // New field for task description
   type: TaskType;
   category: TaskCategory;
   assignees: string[]; // Member IDs
@@ -65,4 +66,15 @@ export interface Alert {
   projectName: string;
   assignees: string[];
   daysOverdue: number;
+}
+
+export interface Notification {
+  id: string;
+  type: 'task_assigned' | 'task_overdue' | 'task_completed';
+  title: string;
+  message: string;
+  taskId?: string;
+  memberId?: string;
+  isRead: boolean;
+  createdAt: Date;
 }
