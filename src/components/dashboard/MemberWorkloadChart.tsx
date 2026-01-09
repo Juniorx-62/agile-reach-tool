@@ -3,12 +3,20 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 interface MemberWorkloadChartProps {
   data: Array<{
     name: string;
+    memberId?: string;
     tasks: number;
     hours: number;
   }>;
+  onMemberClick?: (memberId: string) => void;
 }
 
-export function MemberWorkloadChart({ data }: MemberWorkloadChartProps) {
+export function MemberWorkloadChart({ data, onMemberClick }: MemberWorkloadChartProps) {
+  const handleClick = (data: any) => {
+    if (onMemberClick && data.memberId) {
+      onMemberClick(data.memberId);
+    }
+  };
+
   return (
     <div className="stat-card h-[300px]">
       <h3 className="text-sm font-semibold text-foreground mb-4">Tarefas por Membro</h3>
@@ -36,16 +44,25 @@ export function MemberWorkloadChart({ data }: MemberWorkloadChartProps) {
               name === 'tasks' ? 'Tarefas' : 'Horas'
             ]}
           />
-          <Bar dataKey="tasks" radius={[0, 4, 4, 0]}>
-            {data.map((_, index) => (
+          <Bar 
+            dataKey="tasks" 
+            radius={[0, 4, 4, 0]} 
+            onClick={handleClick}
+            style={{ cursor: 'pointer' }}
+          >
+            {data.map((entry, index) => (
               <Cell 
                 key={`cell-${index}`} 
                 fill={`hsl(217, 91%, ${50 + index * 8}%)`}
+                className="hover:opacity-80 transition-opacity"
               />
             ))}
           </Bar>
         </BarChart>
       </ResponsiveContainer>
+      <p className="text-xs text-muted-foreground text-center mt-2">
+        Clique em um membro para ver detalhes
+      </p>
     </div>
   );
 }
