@@ -1,4 +1,5 @@
-import { format } from 'date-fns';
+import { useState, useEffect, useMemo } from 'react';
+import { format, differenceInHours } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Bell, CheckCheck, AlertTriangle, UserPlus, Clock } from 'lucide-react';
 import { useApp } from '@/contexts/AppContext';
@@ -12,14 +13,41 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
+const NOTIFICATIONS_DISMISSED_KEY = 'notifications_dismissed_at';
+const DISMISS_DURATION_HOURS = 24;
+
 interface NotificationPanelProps {
   onTaskClick?: (taskId: string) => void;
 }
 
 export function NotificationPanel({ onTaskClick }: NotificationPanelProps) {
   const { notifications, markNotificationAsRead, markAllNotificationsAsRead } = useApp();
+  const [isDismissed, setIsDismissed] = useState(false);
 
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  useEffect(() => {
+    const dismissedAt = localStorage.getItem(NOTIFICATIONS_DISMISSED_KEY);
+    if (dismissedAt) {
+      const hoursSinceDismissal = differenceInHours(new Date(), new Date(dismissedAt));
+      if (hoursSinceDismissal < DISMISS_DURATION_HOURS) {
+        setIsDismissed(true);
+      } else {
+        localStorage.removeItem(NOTIFICATIONS_DISMISSED_KEY);
+      }
+    }
+  }, []);
+
+  const handleMarkAllAsRead = () => {
+    markAllNotificationsAsRead();
+    localStorage.setItem(NOTIFICATIONS_DISMISSED_KEY, new Date().toISOString());
+    setIsDismissed(true);
+  };
+
+  const visibleNotifications = useMemo(() => {
+    if (isDismissed) return [];
+    return notifications;
+  }, [notifications, isDismissed]);
+
+  const unreadCount = isDismissed ? 0 : notifications.filter(n => !n.isRead).length;
 
   const getIcon = (type: Notification['type']) => {
     switch (type) {
@@ -60,7 +88,7 @@ export function NotificationPanel({ onTaskClick }: NotificationPanelProps) {
             <Button 
               variant="ghost" 
               size="sm" 
-              onClick={markAllNotificationsAsRead}
+              onClick={handleMarkAllAsRead}
               className="text-xs"
             >
               Marcar todas como lidas
@@ -69,9 +97,9 @@ export function NotificationPanel({ onTaskClick }: NotificationPanelProps) {
         </div>
 
         <ScrollArea className="max-h-[400px]">
-          {notifications.length > 0 ? (
+          {visibleNotifications.length > 0 ? (
             <div className="divide-y divide-border">
-              {notifications.map((notification) => (
+              {visibleNotifications.map((notification) => (
                 <button
                   key={notification.id}
                   onClick={() => handleNotificationClick(notification)}
