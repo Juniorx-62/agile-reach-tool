@@ -52,7 +52,7 @@ const categoryLabels: Record<string, string> = {
 export default function Export() {
   const { projects, sprints, members, tasks } = useApp();
   const [exportType, setExportType] = useState<ExportType>('general');
-  const [format, setFormat] = useState<ExportFormat>('excel');
+  const [exportFormat, setExportFormat] = useState<ExportFormat>('excel');
   const [selectedId, setSelectedId] = useState<string>('');
   const [exporting, setExporting] = useState(false);
 
@@ -108,8 +108,8 @@ export default function Export() {
         'Estimativa (h)': task.estimatedHours,
         'Intercorrência': task.hasIncident ? 'Sim' : 'Não',
         'Entregue': task.isDelivered ? 'Sim' : 'Não',
-        'Criação': format(new Date(task.createdAt), 'dd/MM/yyyy', { locale: ptBR }),
-        'Conclusão': task.completedAt ? format(new Date(task.completedAt), 'dd/MM/yyyy', { locale: ptBR }) : '-',
+        'Criação': formatDate(new Date(task.createdAt), 'dd/MM/yyyy', { locale: ptBR }),
+        'Conclusão': task.completedAt ? formatDate(new Date(task.completedAt), 'dd/MM/yyyy', { locale: ptBR }) : '-',
       };
     });
   };
@@ -128,7 +128,7 @@ export default function Export() {
     }));
     worksheet['!cols'] = colWidths;
     
-    XLSX.writeFile(workbook, `${title.replace(/\s+/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+    XLSX.writeFile(workbook, `${title.replace(/\s+/g, '_')}_${formatDate(new Date(), 'yyyy-MM-dd')}.xlsx`);
   };
 
   const exportToPDF = () => {
@@ -144,7 +144,7 @@ export default function Export() {
     // Date
     doc.setFontSize(10);
     doc.setTextColor(128);
-    doc.text(`Gerado em ${format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}`, 14, 30);
+    doc.text(`Gerado em ${formatDate(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}`, 14, 30);
     
     // Stats summary
     const filteredTasks = getFilteredTasks();
@@ -169,7 +169,7 @@ export default function Export() {
       alternateRowStyles: { fillColor: [245, 247, 250] },
     });
     
-    doc.save(`${title.replace(/\s+/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+    doc.save(`${title.replace(/\s+/g, '_')}_${formatDate(new Date(), 'yyyy-MM-dd')}.pdf`);
   };
 
   const handleExport = async () => {
@@ -178,7 +178,7 @@ export default function Export() {
     try {
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      if (format === 'excel') {
+      if (exportFormat === 'excel') {
         exportToExcel();
       } else {
         exportToPDF();
@@ -277,10 +277,10 @@ export default function Export() {
             <h4 className="font-semibold text-foreground mb-4">Formato de Exportação</h4>
             <div className="flex gap-4">
               <button
-                onClick={() => setFormat('excel')}
+                onClick={() => setExportFormat('excel')}
                 className={cn(
                   'flex-1 p-4 rounded-xl border-2 flex items-center gap-3 transition-all',
-                  format === 'excel'
+                  exportFormat === 'excel'
                     ? 'border-primary bg-primary/5'
                     : 'border-border hover:border-primary/50'
                 )}
@@ -292,16 +292,16 @@ export default function Export() {
                   <p className="font-medium text-foreground">Excel</p>
                   <p className="text-xs text-muted-foreground">.xlsx</p>
                 </div>
-                {format === 'excel' && (
+                {exportFormat === 'excel' && (
                   <Check className="w-5 h-5 text-primary ml-auto" />
                 )}
               </button>
 
               <button
-                onClick={() => setFormat('pdf')}
+                onClick={() => setExportFormat('pdf')}
                 className={cn(
                   'flex-1 p-4 rounded-xl border-2 flex items-center gap-3 transition-all',
-                  format === 'pdf'
+                  exportFormat === 'pdf'
                     ? 'border-primary bg-primary/5'
                     : 'border-border hover:border-primary/50'
                 )}
@@ -313,7 +313,7 @@ export default function Export() {
                   <p className="font-medium text-foreground">PDF</p>
                   <p className="text-xs text-muted-foreground">.pdf</p>
                 </div>
-                {format === 'pdf' && (
+                {exportFormat === 'pdf' && (
                   <Check className="w-5 h-5 text-primary ml-auto" />
                 )}
               </button>
