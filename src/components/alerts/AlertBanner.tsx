@@ -1,8 +1,11 @@
 import { AlertTriangle, X } from 'lucide-react';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useApp } from '@/contexts/AppContext';
-import { differenceInDays } from 'date-fns';
+import { differenceInDays, differenceInHours } from 'date-fns';
 import { Task } from '@/types';
+
+const ALERTS_DISMISSED_KEY = 'alerts_dismissed_at';
+const DISMISS_DURATION_HOURS = 24;
 
 interface AlertBannerProps {
   onTaskClick?: (task: Task) => void;
@@ -11,6 +14,19 @@ interface AlertBannerProps {
 export function AlertBanner({ onTaskClick }: AlertBannerProps) {
   const { tasks, projects, members } = useApp();
   const [dismissed, setDismissed] = useState<string[]>([]);
+  const [isGloballyDismissed, setIsGloballyDismissed] = useState(false);
+
+  useEffect(() => {
+    const dismissedAt = localStorage.getItem(ALERTS_DISMISSED_KEY);
+    if (dismissedAt) {
+      const hoursSinceDismissal = differenceInHours(new Date(), new Date(dismissedAt));
+      if (hoursSinceDismissal < DISMISS_DURATION_HOURS) {
+        setIsGloballyDismissed(true);
+      } else {
+        localStorage.removeItem(ALERTS_DISMISSED_KEY);
+      }
+    }
+  }, []);
 
   const overdueTasks = useMemo(() => {
     const now = new Date();
@@ -35,7 +51,9 @@ export function AlertBanner({ onTaskClick }: AlertBannerProps) {
     });
   }, [tasks, projects, members]);
 
-  const visibleAlerts = overdueTasks.filter(alert => !dismissed.includes(alert.id));
+  const visibleAlerts = isGloballyDismissed 
+    ? [] 
+    : overdueTasks.filter(alert => !dismissed.includes(alert.id));
 
   if (visibleAlerts.length === 0) return null;
 
