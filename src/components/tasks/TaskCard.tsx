@@ -7,6 +7,8 @@ import { cn } from '@/lib/utils';
 interface TaskCardProps {
   task: Task;
   onClick?: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
 }
 
 const priorityLabels: Record<number, string> = {
@@ -19,12 +21,12 @@ const priorityLabels: Record<number, string> = {
 };
 
 const priorityColors: Record<number, string> = {
-  0: 'bg-muted text-muted-foreground',
-  1: 'bg-muted text-muted-foreground',
-  2: 'bg-info/15 text-info',
+  0: 'bg-destructive/15 text-destructive',
+  1: 'bg-destructive/15 text-destructive',
+  2: 'bg-warning/15 text-warning',
   3: 'bg-warning/15 text-warning',
-  4: 'bg-warning/15 text-warning',
-  5: 'bg-destructive/15 text-destructive',
+  4: 'bg-info/15 text-info',
+  5: 'bg-muted text-muted-foreground',
 };
 
 const typeLabels: Record<string, string> = {
@@ -45,7 +47,7 @@ const categoryColors: Record<string, string> = {
   bug: 'badge-destructive',
 };
 
-export function TaskCard({ task, onClick }: TaskCardProps) {
+export function TaskCard({ task, onClick, onEdit, onDelete }: TaskCardProps) {
   const { members, projects, sprints } = useApp();
   
   const assigneeMembers = task.assignees
