@@ -1,23 +1,44 @@
 import { ReactNode, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { AlertBanner } from '@/components/alerts/AlertBanner';
 import { TaskDetailModal } from '@/components/tasks/TaskDetailModal';
 import { TaskFormModal } from '@/components/modals/TaskFormModal';
 import { Task } from '@/types';
+import { useApp } from '@/contexts/AppContext';
 
 interface MainLayoutProps {
   children: ReactNode;
 }
 
 export function MainLayout({ children }: MainLayoutProps) {
+  const navigate = useNavigate();
+  const { tasks } = useApp();
   const [alertTask, setAlertTask] = useState<Task | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+
+  const handleAlertClick = (type: string, taskIds: string[]) => {
+    // If only one task, open it directly
+    if (taskIds.length === 1) {
+      const task = tasks.find(t => t.id === taskIds[0]);
+      if (task) {
+        setAlertTask(task);
+        return;
+      }
+    }
+    
+    // For multiple tasks, navigate to notifications page with filter
+    const filterParam = type === 'critical_overdue' || type === 'overdue' 
+      ? 'overdue' 
+      : 'pending';
+    navigate(`/notifications?filter=${filterParam}`);
+  };
 
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
       <div className="pl-64">
-        <AlertBanner onTaskClick={(task) => setAlertTask(task)} />
+        <AlertBanner onAlertClick={handleAlertClick} />
         <main className="min-h-screen">
           {children}
         </main>
