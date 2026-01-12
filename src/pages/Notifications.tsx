@@ -1,6 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useSearchParams } from 'react-router-dom';
 import { Bell, CheckCheck, AlertTriangle, UserPlus, Clock, Filter, Eye, EyeOff, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 import { useApp } from '@/contexts/AppContext';
 import { Header } from '@/components/layout/Header';
@@ -13,6 +14,7 @@ import { Notification, Task } from '@/types';
 import { TaskDetailModal } from '@/components/tasks/TaskDetailModal';
 
 export default function Notifications() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const { 
     notifications, 
     tasks,
@@ -23,10 +25,31 @@ export default function Notifications() {
     markAllNotificationsAsRead 
   } = useApp();
   
-  const [typeFilter, setTypeFilter] = useState<string>('all');
+  // Initialize filter from URL param
+  const initialFilter = searchParams.get('filter') || 'all';
+  const [typeFilter, setTypeFilter] = useState<string>(initialFilter);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+
+  // Sync URL params with filter
+  useEffect(() => {
+    const filterParam = searchParams.get('filter');
+    if (filterParam && filterParam !== typeFilter) {
+      setTypeFilter(filterParam);
+    }
+  }, [searchParams]);
+
+  // Update URL when filter changes
+  const handleTypeFilterChange = (value: string) => {
+    setTypeFilter(value);
+    if (value === 'all') {
+      searchParams.delete('filter');
+    } else {
+      searchParams.set('filter', value);
+    }
+    setSearchParams(searchParams);
+  };
 
   const filteredNotifications = useMemo(() => {
     return notifications.filter(n => {
@@ -120,7 +143,7 @@ export default function Notifications() {
                   <span className="text-sm font-medium">Filtros:</span>
                 </div>
                 
-                <Select value={typeFilter} onValueChange={setTypeFilter}>
+                <Select value={typeFilter} onValueChange={handleTypeFilterChange}>
                   <SelectTrigger className="w-[150px]">
                     <SelectValue placeholder="Tipo" />
                   </SelectTrigger>
