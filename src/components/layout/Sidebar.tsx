@@ -16,12 +16,15 @@ import logo from '@/assets/logo.png';
 import { cn } from '@/lib/utils';
 import { useApp } from '@/contexts/AppContext';
 
+import { Bell } from 'lucide-react';
+
 const mainNavItems = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/' },
   { icon: FolderKanban, label: 'Projetos', href: '/projects' },
   { icon: ListTodo, label: 'Tarefas', href: '/tasks' },
   { icon: Users, label: 'Equipe', href: '/team' },
   { icon: Calendar, label: 'Linha do Tempo', href: '/timeline' },
+  { icon: Bell, label: 'Notificações', href: '/notifications' },
 ];
 
 const utilityNavItems = [

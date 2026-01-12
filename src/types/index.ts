@@ -28,10 +28,10 @@ export interface Task {
   demandId: string;
   priority: TaskPriority;
   title: string;
-  description?: string; // New field for task description
+  description?: string;
   type: TaskType;
   category: TaskCategory;
-  assignees: string[]; // Member IDs
+  assignees: string[];
   estimatedHours: number;
   hasIncident: boolean;
   isDelivered: boolean;
@@ -68,13 +68,33 @@ export interface Alert {
   daysOverdue: number;
 }
 
+export type NotificationType = 'task_assigned' | 'task_overdue' | 'task_completed' | 'grouped_overdue' | 'grouped_pending';
+
 export interface Notification {
   id: string;
-  type: 'task_assigned' | 'task_overdue' | 'task_completed';
+  type: NotificationType;
   title: string;
   message: string;
   taskId?: string;
+  taskIds?: string[]; // For grouped notifications
   memberId?: string;
   isRead: boolean;
   createdAt: Date;
+  readAt?: Date;
 }
+
+export interface NotificationSettings {
+  enabled: boolean;
+  overdueTasksEnabled: boolean;
+  pendingTasksEnabled: boolean;
+  assignedTasksEnabled: boolean;
+  autoRepeat24h: boolean;
+}
+
+export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
+  enabled: true,
+  overdueTasksEnabled: true,
+  pendingTasksEnabled: true,
+  assignedTasksEnabled: true,
+  autoRepeat24h: true,
+};

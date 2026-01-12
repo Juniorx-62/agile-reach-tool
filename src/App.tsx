@@ -14,6 +14,7 @@ import Timeline from "./pages/Timeline";
 import Import from "./pages/Import";
 import Export from "./pages/Export";
 import Settings from "./pages/Settings";
+import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +37,7 @@ const App = () => (
               <Route path="/import" element={<Import />} />
               <Route path="/export" element={<Export />} />
               <Route path="/settings" element={<Settings />} />
+              <Route path="/notifications" element={<Notifications />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </MainLayout>
