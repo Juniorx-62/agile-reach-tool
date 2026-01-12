@@ -1,7 +1,19 @@
-import React, { createContext, useContext, useState, ReactNode, useMemo } from 'react';
-import { Project, Sprint, Task, TeamMember, Notification } from '@/types';
+import React, { createContext, useContext, useState, ReactNode, useMemo, useEffect, useCallback } from 'react';
+import { Project, Sprint, Task, TeamMember, Notification, NotificationSettings, DEFAULT_NOTIFICATION_SETTINGS } from '@/types';
 import { mockProjects, mockSprints, mockTasks, mockTeamMembers } from '@/data/mockData';
-import { differenceInDays } from 'date-fns';
+import { differenceInDays, differenceInHours } from 'date-fns';
+
+const NOTIFICATION_SETTINGS_KEY = 'notification_settings';
+const NOTIFICATIONS_READ_KEY = 'notifications_read_state';
+const NOTIFICATIONS_DISMISSED_KEY = 'notifications_dismissed_at';
+const DISMISS_DURATION_HOURS = 24;
+
+interface NotificationReadState {
+  [notificationId: string]: {
+    isRead: boolean;
+    readAt: string;
+  };
+}
 
 interface AppContextType {
   projects: Project[];
@@ -9,6 +21,8 @@ interface AppContextType {
   tasks: Task[];
   members: TeamMember[];
   notifications: Notification[];
+  notificationSettings: NotificationSettings;
+  isAlertsDismissed: boolean;
   selectedProjectId: string | null;
   selectedSprintId: string | null;
   setSelectedProjectId: (id: string | null) => void;
@@ -26,8 +40,11 @@ interface AppContextType {
   updateMember: (id: string, data: Partial<TeamMember>) => void;
   deleteMember: (id: string) => void;
   markNotificationAsRead: (id: string) => void;
+  markNotificationAsUnread: (id: string) => void;
   markAllNotificationsAsRead: () => void;
+  updateNotificationSettings: (settings: Partial<NotificationSettings>) => void;
   importTasks: (newTasks: Omit<Task, 'id' | 'createdAt'>[], mode: 'overwrite' | 'append') => void;
+  getTaskById: (id: string) => Task | undefined;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -37,36 +54,126 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [sprints, setSprints] = useState<Sprint[]>(mockSprints);
   const [tasks, setTasks] = useState<Task[]>(mockTasks);
   const [members, setMembers] = useState<TeamMember[]>(mockTeamMembers);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [assignedNotifications, setAssignedNotifications] = useState<Notification[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [selectedSprintId, setSelectedSprintId] = useState<string | null>(null);
+  
+  // Load notification settings from localStorage
+  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>(() => {
+    const saved = localStorage.getItem(NOTIFICATION_SETTINGS_KEY);
+    return saved ? { ...DEFAULT_NOTIFICATION_SETTINGS, ...JSON.parse(saved) } : DEFAULT_NOTIFICATION_SETTINGS;
+  });
+
+  // Load read state from localStorage
+  const [readState, setReadState] = useState<NotificationReadState>(() => {
+    const saved = localStorage.getItem(NOTIFICATIONS_READ_KEY);
+    return saved ? JSON.parse(saved) : {};
+  });
+
+  // Check if alerts are dismissed (24h rule)
+  const [isAlertsDismissed, setIsAlertsDismissed] = useState(() => {
+    const dismissedAt = localStorage.getItem(NOTIFICATIONS_DISMISSED_KEY);
+    if (dismissedAt) {
+      const hoursSinceDismissal = differenceInHours(new Date(), new Date(dismissedAt));
+      if (hoursSinceDismissal < DISMISS_DURATION_HOURS) {
+        return true;
+      } else {
+        // 24h passed, check if autoRepeat is enabled
+        const settings = localStorage.getItem(NOTIFICATION_SETTINGS_KEY);
+        const parsedSettings = settings ? JSON.parse(settings) : DEFAULT_NOTIFICATION_SETTINGS;
+        if (parsedSettings.autoRepeat24h) {
+          localStorage.removeItem(NOTIFICATIONS_DISMISSED_KEY);
+          // Reset read state for overdue notifications
+          const newReadState = { ...readState };
+          Object.keys(newReadState).forEach(key => {
+            if (key.includes('overdue') || key.includes('pending')) {
+              delete newReadState[key];
+            }
+          });
+          localStorage.setItem(NOTIFICATIONS_READ_KEY, JSON.stringify(newReadState));
+        }
+        return false;
+      }
+    }
+    return false;
+  });
+
+  // Persist notification settings
+  useEffect(() => {
+    localStorage.setItem(NOTIFICATION_SETTINGS_KEY, JSON.stringify(notificationSettings));
+  }, [notificationSettings]);
+
+  // Persist read state
+  useEffect(() => {
+    localStorage.setItem(NOTIFICATIONS_READ_KEY, JSON.stringify(readState));
+  }, [readState]);
 
   const generateId = () => Math.random().toString(36).substr(2, 9);
 
-  // Generate notifications based on tasks
+  // Generate grouped notifications based on tasks
   const generatedNotifications = useMemo(() => {
+    if (!notificationSettings.enabled) return [];
+
     const notifs: Notification[] = [];
     const now = new Date();
 
-    tasks.forEach(task => {
-      if (!task.isDelivered) {
-        const daysSinceCreation = differenceInDays(now, new Date(task.createdAt));
-        if (daysSinceCreation > 30) {
-          notifs.push({
-            id: `notif-overdue-${task.id}`,
-            type: 'task_overdue',
-            title: 'Tarefa em atraso',
-            message: `"${task.title}" está há ${daysSinceCreation} dias sem conclusão`,
-            taskId: task.id,
-            isRead: notifications.find(n => n.id === `notif-overdue-${task.id}`)?.isRead || false,
-            createdAt: new Date(),
-          });
-        }
-      }
+    // Collect overdue tasks (>30 days)
+    const overdueTasks = tasks.filter(task => {
+      if (task.isDelivered) return false;
+      const daysSinceCreation = differenceInDays(now, new Date(task.createdAt));
+      return daysSinceCreation > 30;
     });
 
-    return [...notifs, ...notifications.filter(n => n.type === 'task_assigned')];
-  }, [tasks, notifications]);
+    // Create grouped notification for overdue tasks
+    if (notificationSettings.overdueTasksEnabled && overdueTasks.length > 0) {
+      const notifId = 'grouped-overdue';
+      notifs.push({
+        id: notifId,
+        type: 'grouped_overdue',
+        title: 'Tarefas em atraso',
+        message: `Você possui ${overdueTasks.length} tarefa${overdueTasks.length > 1 ? 's' : ''} em atraso há mais de 30 dias`,
+        taskIds: overdueTasks.map(t => t.id),
+        isRead: readState[notifId]?.isRead || false,
+        createdAt: new Date(),
+        readAt: readState[notifId]?.readAt ? new Date(readState[notifId].readAt) : undefined,
+      });
+    }
+
+    // Collect pending tasks (not delivered, not overdue)
+    const pendingTasks = tasks.filter(task => {
+      if (task.isDelivered) return false;
+      const daysSinceCreation = differenceInDays(now, new Date(task.createdAt));
+      return daysSinceCreation <= 30 && daysSinceCreation > 7;
+    });
+
+    // Create grouped notification for pending tasks
+    if (notificationSettings.pendingTasksEnabled && pendingTasks.length > 0) {
+      const notifId = 'grouped-pending';
+      notifs.push({
+        id: notifId,
+        type: 'grouped_pending',
+        title: 'Tarefas pendentes',
+        message: `Existem ${pendingTasks.length} tarefa${pendingTasks.length > 1 ? 's' : ''} pendentes há mais de 7 dias`,
+        taskIds: pendingTasks.map(t => t.id),
+        isRead: readState[notifId]?.isRead || false,
+        createdAt: new Date(),
+        readAt: readState[notifId]?.readAt ? new Date(readState[notifId].readAt) : undefined,
+      });
+    }
+
+    // Add assigned notifications
+    if (notificationSettings.assignedTasksEnabled) {
+      assignedNotifications.forEach(n => {
+        notifs.push({
+          ...n,
+          isRead: readState[n.id]?.isRead || n.isRead,
+          readAt: readState[n.id]?.readAt ? new Date(readState[n.id].readAt) : n.readAt,
+        });
+      });
+    }
+
+    return notifs;
+  }, [tasks, assignedNotifications, notificationSettings, readState]);
 
   const addProject = (project: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>) => {
     const newProject: Project = {
@@ -117,21 +224,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setTasks(prev => [...prev, newTask]);
 
     // Create notification for assigned members
-    task.assignees.forEach(memberId => {
-      const member = members.find(m => m.id === memberId);
-      if (member) {
-        setNotifications(prev => [...prev, {
-          id: `notif-assigned-${newTask.id}-${memberId}`,
-          type: 'task_assigned',
-          title: 'Nova tarefa atribuída',
-          message: `Você foi atribuído à tarefa "${task.title}"`,
-          taskId: newTask.id,
-          memberId,
-          isRead: false,
-          createdAt: new Date(),
-        }]);
-      }
-    });
+    if (notificationSettings.assignedTasksEnabled) {
+      task.assignees.forEach(memberId => {
+        const member = members.find(m => m.id === memberId);
+        if (member) {
+          const notifId = `notif-assigned-${newTask.id}-${memberId}`;
+          setAssignedNotifications(prev => [...prev, {
+            id: notifId,
+            type: 'task_assigned',
+            title: 'Nova tarefa atribuída',
+            message: `Você foi atribuído à tarefa "${task.title}"`,
+            taskId: newTask.id,
+            memberId,
+            isRead: false,
+            createdAt: new Date(),
+          }]);
+        }
+      });
+    }
   };
 
   const updateTask = (id: string, data: Partial<Task>) => {
@@ -159,15 +269,38 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setMembers(prev => prev.filter(m => m.id !== id));
   };
 
-  const markNotificationAsRead = (id: string) => {
-    setNotifications(prev => prev.map(n => 
-      n.id === id ? { ...n, isRead: true } : n
-    ));
-  };
+  const markNotificationAsRead = useCallback((id: string) => {
+    setReadState(prev => ({
+      ...prev,
+      [id]: { isRead: true, readAt: new Date().toISOString() }
+    }));
+  }, []);
 
-  const markAllNotificationsAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
-  };
+  const markNotificationAsUnread = useCallback((id: string) => {
+    setReadState(prev => {
+      const newState = { ...prev };
+      delete newState[id];
+      return newState;
+    });
+  }, []);
+
+  const markAllNotificationsAsRead = useCallback(() => {
+    const newReadState: NotificationReadState = {};
+    generatedNotifications.forEach(n => {
+      newReadState[n.id] = { isRead: true, readAt: new Date().toISOString() };
+    });
+    setReadState(prev => ({ ...prev, ...newReadState }));
+    localStorage.setItem(NOTIFICATIONS_DISMISSED_KEY, new Date().toISOString());
+    setIsAlertsDismissed(true);
+  }, [generatedNotifications]);
+
+  const updateNotificationSettings = useCallback((settings: Partial<NotificationSettings>) => {
+    setNotificationSettings(prev => ({ ...prev, ...settings }));
+  }, []);
+
+  const getTaskById = useCallback((id: string) => {
+    return tasks.find(t => t.id === id);
+  }, [tasks]);
 
   const importTasks = (newTasks: Omit<Task, 'id' | 'createdAt'>[], mode: 'overwrite' | 'append') => {
     const tasksWithIds: Task[] = newTasks.map(task => ({
@@ -191,6 +324,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         tasks,
         members,
         notifications: generatedNotifications,
+        notificationSettings,
+        isAlertsDismissed,
         selectedProjectId,
         selectedSprintId,
         setSelectedProjectId,
@@ -208,8 +343,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         updateMember,
         deleteMember,
         markNotificationAsRead,
+        markNotificationAsUnread,
         markAllNotificationsAsRead,
+        updateNotificationSettings,
         importTasks,
+        getTaskById,
       }}
     >
       {children}

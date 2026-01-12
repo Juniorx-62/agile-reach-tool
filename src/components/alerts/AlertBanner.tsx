@@ -1,34 +1,23 @@
 import { AlertTriangle, X } from 'lucide-react';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useApp } from '@/contexts/AppContext';
-import { differenceInDays, differenceInHours } from 'date-fns';
+import { differenceInDays } from 'date-fns';
 import { Task } from '@/types';
-
-const ALERTS_DISMISSED_KEY = 'alerts_dismissed_at';
-const DISMISS_DURATION_HOURS = 24;
 
 interface AlertBannerProps {
   onTaskClick?: (task: Task) => void;
 }
 
 export function AlertBanner({ onTaskClick }: AlertBannerProps) {
-  const { tasks, projects, members } = useApp();
+  const { tasks, projects, members, notificationSettings, isAlertsDismissed } = useApp();
   const [dismissed, setDismissed] = useState<string[]>([]);
-  const [isGloballyDismissed, setIsGloballyDismissed] = useState(false);
-
-  useEffect(() => {
-    const dismissedAt = localStorage.getItem(ALERTS_DISMISSED_KEY);
-    if (dismissedAt) {
-      const hoursSinceDismissal = differenceInHours(new Date(), new Date(dismissedAt));
-      if (hoursSinceDismissal < DISMISS_DURATION_HOURS) {
-        setIsGloballyDismissed(true);
-      } else {
-        localStorage.removeItem(ALERTS_DISMISSED_KEY);
-      }
-    }
-  }, []);
 
   const overdueTasks = useMemo(() => {
+    // Don't show if notifications are disabled or overdue alerts are disabled
+    if (!notificationSettings.enabled || !notificationSettings.overdueTasksEnabled) {
+      return [];
+    }
+
     const now = new Date();
     return tasks.filter(task => {
       if (task.isDelivered) return false;
@@ -49,9 +38,10 @@ export function AlertBanner({ onTaskClick }: AlertBannerProps) {
         daysOverdue: differenceInDays(new Date(), new Date(task.createdAt)),
       };
     });
-  }, [tasks, projects, members]);
+  }, [tasks, projects, members, notificationSettings]);
 
-  const visibleAlerts = isGloballyDismissed 
+  // Apply global dismiss and individual dismiss
+  const visibleAlerts = isAlertsDismissed 
     ? [] 
     : overdueTasks.filter(alert => !dismissed.includes(alert.id));
 

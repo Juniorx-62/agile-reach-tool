@@ -1,11 +1,30 @@
-import { Settings as SettingsIcon, Bell, Database, Palette } from 'lucide-react';
+import { useState } from 'react';
+import { Settings as SettingsIcon, Bell, Database, Save, Check } from 'lucide-react';
+import { useApp } from '@/contexts/AppContext';
 import { Header } from '@/components/layout/Header';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 
 export default function Settings() {
+  const { notificationSettings, updateNotificationSettings } = useApp();
+  const { toast } = useToast();
+  const [sprintDuration, setSprintDuration] = useState(14);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = () => {
+    setIsSaving(true);
+    setTimeout(() => {
+      setIsSaving(false);
+      toast({
+        title: "Configurações salvas",
+        description: "Suas preferências foram atualizadas com sucesso.",
+      });
+    }, 500);
+  };
+
   return (
     <>
       <Header 
@@ -30,7 +49,8 @@ export default function Settings() {
                 <Input 
                   id="sprint-duration"
                   type="number"
-                  defaultValue={14}
+                  value={sprintDuration}
+                  onChange={(e) => setSprintDuration(Number(e.target.value))}
                   min={1}
                   max={30}
                   className="mt-2 max-w-[200px]"
@@ -42,41 +62,72 @@ export default function Settings() {
             </div>
           </div>
 
-          {/* Notifications (Future) */}
+          {/* Notifications Settings */}
           <div className="stat-card">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2 rounded-lg bg-info/10">
                 <Bell className="w-5 h-5 text-info" />
               </div>
-              <div>
-                <h4 className="font-semibold text-foreground">Notificações</h4>
-                <p className="text-xs text-muted-foreground">Em breve</p>
-              </div>
+              <h4 className="font-semibold text-foreground">Notificações</h4>
             </div>
             
-            <div className="space-y-4 opacity-50 pointer-events-none">
-              <div className="flex items-center justify-between">
+            <div className="space-y-4">
+              {/* Master toggle */}
+              <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
                 <div>
-                  <p className="font-medium text-foreground">Nova tarefa atribuída</p>
-                  <p className="text-sm text-muted-foreground">Receba notificação quando uma tarefa for atribuída a você</p>
+                  <p className="font-medium text-foreground">Ativar notificações</p>
+                  <p className="text-sm text-muted-foreground">Controle geral de todas as notificações</p>
                 </div>
-                <Switch disabled />
+                <Switch 
+                  checked={notificationSettings.enabled}
+                  onCheckedChange={(checked) => updateNotificationSettings({ enabled: checked })}
+                />
               </div>
-              
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-foreground">Tarefa próxima do prazo</p>
-                  <p className="text-sm text-muted-foreground">Alerta 2 dias antes do fim da sprint</p>
+
+              <div className={notificationSettings.enabled ? '' : 'opacity-50 pointer-events-none'}>
+                <div className="flex items-center justify-between py-3 border-b border-border">
+                  <div>
+                    <p className="font-medium text-foreground">Tarefas em atraso</p>
+                    <p className="text-sm text-muted-foreground">Alertas para tarefas pendentes há mais de 30 dias</p>
+                  </div>
+                  <Switch 
+                    checked={notificationSettings.overdueTasksEnabled}
+                    onCheckedChange={(checked) => updateNotificationSettings({ overdueTasksEnabled: checked })}
+                  />
                 </div>
-                <Switch disabled />
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-foreground">Tarefa atrasada</p>
-                  <p className="text-sm text-muted-foreground">Alerta quando a sprint terminar com tarefas pendentes</p>
+                
+                <div className="flex items-center justify-between py-3 border-b border-border">
+                  <div>
+                    <p className="font-medium text-foreground">Tarefas pendentes</p>
+                    <p className="text-sm text-muted-foreground">Alertas para tarefas pendentes há mais de 7 dias</p>
+                  </div>
+                  <Switch 
+                    checked={notificationSettings.pendingTasksEnabled}
+                    onCheckedChange={(checked) => updateNotificationSettings({ pendingTasksEnabled: checked })}
+                  />
                 </div>
-                <Switch disabled />
+                
+                <div className="flex items-center justify-between py-3 border-b border-border">
+                  <div>
+                    <p className="font-medium text-foreground">Nova tarefa atribuída</p>
+                    <p className="text-sm text-muted-foreground">Notificação quando uma tarefa for atribuída</p>
+                  </div>
+                  <Switch 
+                    checked={notificationSettings.assignedTasksEnabled}
+                    onCheckedChange={(checked) => updateNotificationSettings({ assignedTasksEnabled: checked })}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between py-3">
+                  <div>
+                    <p className="font-medium text-foreground">Repetição automática (24h)</p>
+                    <p className="text-sm text-muted-foreground">Reexibir notificações de atraso após 24 horas se a tarefa ainda estiver pendente</p>
+                  </div>
+                  <Switch 
+                    checked={notificationSettings.autoRepeat24h}
+                    onCheckedChange={(checked) => updateNotificationSettings({ autoRepeat24h: checked })}
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -114,8 +165,22 @@ export default function Settings() {
           </div>
 
           {/* Save Button */}
-          <Button className="w-full gradient-primary text-white">
-            Salvar Configurações
+          <Button 
+            className="w-full gradient-primary text-white"
+            onClick={handleSave}
+            disabled={isSaving}
+          >
+            {isSaving ? (
+              <>
+                <Check className="w-4 h-4 mr-2 animate-pulse" />
+                Salvando...
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4 mr-2" />
+                Salvar Configurações
+              </>
+            )}
           </Button>
         </div>
       </div>
