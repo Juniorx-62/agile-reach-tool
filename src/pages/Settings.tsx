@@ -7,12 +7,17 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { ConfirmationModal } from '@/components/modals/ConfirmationModal';
 
 export default function Settings() {
-  const { notificationSettings, updateNotificationSettings } = useApp();
+  const { notificationSettings, updateNotificationSettings, clearDemoData, resetSystem } = useApp();
   const { toast } = useToast();
   const [sprintDuration, setSprintDuration] = useState(14);
   const [isSaving, setIsSaving] = useState(false);
+  const [showClearModal, setShowClearModal] = useState(false);
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
 
   const handleSave = () => {
     setIsSaving(true);
@@ -23,6 +28,30 @@ export default function Settings() {
         description: "Suas preferências foram atualizadas com sucesso.",
       });
     }, 500);
+  };
+
+  const handleClearDemoData = async () => {
+    setIsClearing(true);
+    await new Promise(resolve => setTimeout(resolve, 500));
+    clearDemoData();
+    setIsClearing(false);
+    setShowClearModal(false);
+    toast({
+      title: "Dados limpos",
+      description: "Todos os dados de demonstração foram removidos.",
+    });
+  };
+
+  const handleResetSystem = async () => {
+    setIsResetting(true);
+    await new Promise(resolve => setTimeout(resolve, 500));
+    resetSystem();
+    setIsResetting(false);
+    setShowResetModal(false);
+    toast({
+      title: "Sistema resetado",
+      description: "Todos os dados foram removidos. O sistema está em seu estado inicial.",
+    });
   };
 
   return (
@@ -147,7 +176,7 @@ export default function Settings() {
                   <p className="font-medium text-foreground">Limpar dados de demonstração</p>
                   <p className="text-sm text-muted-foreground">Remove todos os dados de exemplo do sistema</p>
                 </div>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" onClick={() => setShowClearModal(true)}>
                   Limpar
                 </Button>
               </div>
@@ -157,7 +186,7 @@ export default function Settings() {
                   <p className="font-medium text-foreground">Resetar sistema</p>
                   <p className="text-sm text-muted-foreground">Remove todos os dados permanentemente</p>
                 </div>
-                <Button variant="destructive" size="sm">
+                <Button variant="destructive" size="sm" onClick={() => setShowResetModal(true)}>
                   Resetar
                 </Button>
               </div>
@@ -184,6 +213,30 @@ export default function Settings() {
           </Button>
         </div>
       </div>
+
+      {/* Clear Demo Data Modal */}
+      <ConfirmationModal
+        open={showClearModal}
+        onClose={() => setShowClearModal(false)}
+        onConfirm={handleClearDemoData}
+        title="Limpar dados de demonstração"
+        description="Esta ação irá remover todos os dados de demonstração do sistema (projetos, sprints, tarefas e membros de exemplo). Os dados criados por você serão mantidos. Deseja continuar?"
+        confirmText="Limpar Dados"
+        variant="default"
+        isLoading={isClearing}
+      />
+
+      {/* Reset System Modal */}
+      <ConfirmationModal
+        open={showResetModal}
+        onClose={() => setShowResetModal(false)}
+        onConfirm={handleResetSystem}
+        title="Resetar sistema"
+        description="ATENÇÃO: Esta ação irá remover TODOS os dados do sistema permanentemente, incluindo projetos, sprints, tarefas, membros e configurações de notificação. Esta ação não pode ser desfeita. Deseja continuar?"
+        confirmText="Resetar Tudo"
+        variant="destructive"
+        isLoading={isResetting}
+      />
     </>
   );
 }

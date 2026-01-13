@@ -9,8 +9,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useApp } from '@/contexts/AppContext';
 import { Task, TaskType, TaskCategory, TaskPriority } from '@/types';
 import { toast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Sparkles } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useSummarizeTask } from '@/hooks/useSummarizeTask';
 
 interface TaskFormModalProps {
   task?: Task | null;
@@ -32,6 +33,7 @@ const priorityOptions: { value: TaskPriority; label: string }[] = [
 
 export function TaskFormModal({ task, open, onClose, defaultProjectId, defaultSprintId }: TaskFormModalProps) {
   const { addTask, updateTask, projects, sprints, members } = useApp();
+  const { summarize, isLoading: isSummarizing } = useSummarizeTask();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     projectId: '',
@@ -40,6 +42,7 @@ export function TaskFormModal({ task, open, onClose, defaultProjectId, defaultSp
     priority: 3 as TaskPriority,
     title: '',
     description: '',
+    summary: '',
     type: 'frontend' as TaskType,
     category: 'feature' as TaskCategory,
     assignees: [] as string[],
@@ -61,6 +64,7 @@ export function TaskFormModal({ task, open, onClose, defaultProjectId, defaultSp
         priority: task.priority,
         title: task.title,
         description: task.description || '',
+        summary: (task as any).summary || '',
         type: task.type,
         category: task.category,
         assignees: task.assignees,
@@ -76,6 +80,7 @@ export function TaskFormModal({ task, open, onClose, defaultProjectId, defaultSp
         priority: 3,
         title: '',
         description: '',
+        summary: '',
         type: 'frontend',
         category: 'feature',
         assignees: [],
@@ -85,6 +90,17 @@ export function TaskFormModal({ task, open, onClose, defaultProjectId, defaultSp
       });
     }
   }, [task, open, defaultProjectId, defaultSprintId]);
+
+  const handleGenerateSummary = async () => {
+    const result = await summarize(formData.description);
+    if (result) {
+      setFormData(prev => ({ ...prev, summary: result }));
+      toast({
+        title: 'Resumo gerado',
+        description: 'O resumo foi gerado com sucesso pela IA.',
+      });
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -226,7 +242,43 @@ export function TaskFormModal({ task, open, onClose, defaultProjectId, defaultSp
                 placeholder="Descrição detalhada da tarefa..."
                 rows={3}
               />
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="sm"
+                onClick={handleGenerateSummary}
+                disabled={isSummarizing || formData.description.length < 10}
+                className="mt-2"
+              >
+                {isSummarizing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Gerando resumo...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Gerar resumo com IA
+                  </>
+                )}
+              </Button>
             </div>
+
+            {formData.summary && (
+              <div className="space-y-2">
+                <Label>Resumo da tarefa (IA)</Label>
+                <Textarea
+                  value={formData.summary}
+                  onChange={(e) => setFormData(prev => ({ ...prev, summary: e.target.value }))}
+                  placeholder="Resumo gerado pela IA..."
+                  rows={3}
+                  className="bg-primary/5 border-primary/20"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Este resumo foi gerado por IA e pode ser editado.
+                </p>
+              </div>
+            )}
 
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">

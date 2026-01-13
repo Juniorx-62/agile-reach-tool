@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   CheckSquare, 
@@ -16,15 +16,26 @@ import { TaskCard } from '@/components/tasks/TaskCard';
 import { TaskDetailModal } from '@/components/tasks/TaskDetailModal';
 import { TaskFormModal } from '@/components/modals/TaskFormModal';
 import { MemberDetailModal } from '@/components/team/MemberDetailModal';
-import { useApp } from '@/contexts/AppContext';
+import { useApp, DATA_CHANGED_EVENT } from '@/contexts/AppContext';
 import { Task, TeamMember } from '@/types';
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { tasks, members, projects, sprints, selectedProjectId, selectedSprintId, setSelectedProjectId } = useApp();
+  const { tasks, members, projects, sprints, selectedProjectId, selectedSprintId } = useApp();
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // Listen for data changes to force re-render
+  useEffect(() => {
+    const handleDataChanged = () => {
+      setRefreshKey(prev => prev + 1);
+    };
+
+    window.addEventListener(DATA_CHANGED_EVENT, handleDataChanged);
+    return () => window.removeEventListener(DATA_CHANGED_EVENT, handleDataChanged);
+  }, []);
 
   const filteredTasks = useMemo(() => {
     let result = tasks;
@@ -35,7 +46,7 @@ export default function Dashboard() {
       result = result.filter(t => t.sprintId === selectedSprintId);
     }
     return result;
-  }, [tasks, selectedProjectId, selectedSprintId]);
+  }, [tasks, selectedProjectId, selectedSprintId, refreshKey]);
 
   const stats = useMemo(() => {
     const completed = filteredTasks.filter(t => t.isDelivered);
@@ -86,6 +97,7 @@ export default function Dashboard() {
       const hours = memberTasks.reduce((sum, t) => sum + t.estimatedHours, 0);
       return {
         id: member.id,
+        memberId: member.id,
         name: member.name,
         tasks: memberTasks.length,
         hours,
@@ -101,6 +113,7 @@ export default function Dashboard() {
       const completed = sprintTasks.filter(t => t.isDelivered).reduce((sum, t) => sum + t.estimatedHours, 0);
       return {
         name: sprint.name.replace('Sprint ', 'S'),
+        sprintId: sprint.id,
         estimated,
         completed,
       };
@@ -121,21 +134,34 @@ export default function Dashboard() {
       .slice(0, 4);
   }, [filteredTasks]);
 
-  // Handle chart clicks
-  const handleTypeClick = (filterKey: string) => {
+  // Handle chart clicks with navigation and filtering
+  const handleTypeClick = useCallback((filterKey: string) => {
     navigate(`/tasks?type=${filterKey}`);
-  };
+  }, [navigate]);
 
-  const handleCategoryClick = (filterKey: string) => {
+  const handleCategoryClick = useCallback((filterKey: string) => {
     navigate(`/tasks?category=${filterKey}`);
-  };
+  }, [navigate]);
 
-  const handleMemberClick = (memberId: string) => {
+  const handleMemberClick = useCallback((memberId: string) => {
     const member = members.find(m => m.id === memberId);
     if (member) {
       setSelectedMember(member);
     }
-  };
+  }, [members]);
+
+  // Navigate to tasks filtered by status
+  const handlePendingClick = useCallback(() => {
+    navigate('/tasks?status=pending');
+  }, [navigate]);
+
+  const handleCompletedClick = useCallback(() => {
+    navigate('/tasks?status=delivered');
+  }, [navigate]);
+
+  const handleIncidentsClick = useCallback(() => {
+    navigate('/tasks?incident=true');
+  }, [navigate]);
 
   return (
     <>
@@ -147,31 +173,51 @@ export default function Dashboard() {
       <div className="p-6 space-y-6 animate-fade-in">
         {/* Stats Row */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
-            title="Total de Tarefas"
-            value={stats.total}
-            icon={<CheckSquare className="w-5 h-5 text-primary" />}
-            subtitle={`${stats.completed} concluídas`}
-          />
-          <StatCard
-            title="Horas Estimadas"
-            value={`${stats.totalHours}h`}
-            icon={<Clock className="w-5 h-5 text-info" />}
-            subtitle={`${stats.completedHours}h realizadas`}
-          />
-          <StatCard
-            title="Membros Ativos"
-            value={members.length}
-            icon={<Users className="w-5 h-5 text-success" />}
-            subtitle={`${projects.filter(p => p.status === 'active').length} projetos ativos`}
-          />
-          <StatCard
-            title="Intercorrências"
-            value={stats.incidents}
-            icon={<AlertTriangle className="w-5 h-5 text-warning" />}
-            variant={stats.incidents > 0 ? 'warning' : 'default'}
-            subtitle="Tarefas com problemas"
-          />
+          <div 
+            onClick={() => navigate('/tasks')} 
+            className="cursor-pointer transition-transform hover:scale-[1.02]"
+          >
+            <StatCard
+              title="Total de Tarefas"
+              value={stats.total}
+              icon={<CheckSquare className="w-5 h-5 text-primary" />}
+              subtitle={`${stats.completed} concluídas`}
+            />
+          </div>
+          <div 
+            onClick={() => navigate('/tasks')} 
+            className="cursor-pointer transition-transform hover:scale-[1.02]"
+          >
+            <StatCard
+              title="Horas Estimadas"
+              value={`${stats.totalHours}h`}
+              icon={<Clock className="w-5 h-5 text-info" />}
+              subtitle={`${stats.completedHours}h realizadas`}
+            />
+          </div>
+          <div 
+            onClick={() => navigate('/team')} 
+            className="cursor-pointer transition-transform hover:scale-[1.02]"
+          >
+            <StatCard
+              title="Membros Ativos"
+              value={members.length}
+              icon={<Users className="w-5 h-5 text-success" />}
+              subtitle={`${projects.filter(p => p.status === 'active').length} projetos ativos`}
+            />
+          </div>
+          <div 
+            onClick={handleIncidentsClick} 
+            className="cursor-pointer transition-transform hover:scale-[1.02]"
+          >
+            <StatCard
+              title="Intercorrências"
+              value={stats.incidents}
+              icon={<AlertTriangle className="w-5 h-5 text-warning" />}
+              variant={stats.incidents > 0 ? 'warning' : 'default'}
+              subtitle="Tarefas com problemas"
+            />
+          </div>
         </div>
 
         {/* Progress and Charts Row */}
@@ -183,11 +229,17 @@ export default function Dashboard() {
             </h3>
             <ProgressRing progress={stats.progress} size={160} label="concluído" />
             <div className="flex gap-6 mt-4 text-sm">
-              <div className="text-center">
+              <div 
+                className="text-center cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={handleCompletedClick}
+              >
                 <p className="font-bold text-success">{stats.completed}</p>
                 <p className="text-muted-foreground">Concluídas</p>
               </div>
-              <div className="text-center">
+              <div 
+                className="text-center cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={handlePendingClick}
+              >
                 <p className="font-bold text-warning">{stats.pending}</p>
                 <p className="text-muted-foreground">Pendentes</p>
               </div>
