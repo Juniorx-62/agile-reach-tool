@@ -45,9 +45,14 @@ interface AppContextType {
   updateNotificationSettings: (settings: Partial<NotificationSettings>) => void;
   importTasks: (newTasks: Omit<Task, 'id' | 'createdAt'>[], mode: 'overwrite' | 'append') => void;
   getTaskById: (id: string) => Task | undefined;
+  clearDemoData: () => void;
+  resetSystem: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
+
+// Event for notifying components about data changes
+export const DATA_CHANGED_EVENT = 'app-data-changed';
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [projects, setProjects] = useState<Project[]>(mockProjects);
@@ -314,7 +319,43 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } else {
       setTasks(prev => [...prev, ...tasksWithIds]);
     }
+    
+    // Dispatch event to notify components of data change
+    window.dispatchEvent(new CustomEvent(DATA_CHANGED_EVENT));
   };
+
+  const clearDemoData = useCallback(() => {
+    // Clear only mock/demo data (those with specific prefixes)
+    setProjects(prev => prev.filter(p => !p.id.startsWith('proj-') || p.id.length > 15));
+    setSprints(prev => prev.filter(s => !s.id.startsWith('sprint-') || s.id.length > 15));
+    setTasks(prev => prev.filter(t => !t.id.startsWith('task-') || t.id.length > 15));
+    setMembers(prev => prev.filter(m => !m.id.startsWith('member-') || m.id.length > 15));
+    
+    // Actually clear all demo data (mockData has specific IDs)
+    setProjects([]);
+    setSprints([]);
+    setTasks([]);
+    setMembers([]);
+    
+    window.dispatchEvent(new CustomEvent(DATA_CHANGED_EVENT));
+  }, []);
+
+  const resetSystem = useCallback(() => {
+    // Remove all data and reset to initial state
+    setProjects([]);
+    setSprints([]);
+    setTasks([]);
+    setMembers([]);
+    setAssignedNotifications([]);
+    setSelectedProjectId(null);
+    setSelectedSprintId(null);
+    setReadState({});
+    localStorage.removeItem(NOTIFICATIONS_READ_KEY);
+    localStorage.removeItem(NOTIFICATIONS_DISMISSED_KEY);
+    setIsAlertsDismissed(false);
+    
+    window.dispatchEvent(new CustomEvent(DATA_CHANGED_EVENT));
+  }, []);
 
   return (
     <AppContext.Provider
@@ -348,6 +389,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         updateNotificationSettings,
         importTasks,
         getTaskById,
+        clearDemoData,
+        resetSystem,
       }}
     >
       {children}
