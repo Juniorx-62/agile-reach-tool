@@ -1,11 +1,12 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Plus, Search, Edit, Trash2 } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { TaskCard } from '@/components/tasks/TaskCard';
 import { TaskDetailModal } from '@/components/tasks/TaskDetailModal';
 import { TaskFormModal } from '@/components/modals/TaskFormModal';
 import { useApp } from '@/contexts/AppContext';
-import { Task } from '@/types';
+import { Task, TaskType, TaskCategory } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
@@ -22,6 +23,7 @@ type FilterStatus = 'all' | 'completed' | 'pending';
 type SortOrder = 'newest' | 'oldest' | 'priority';
 
 export default function Tasks() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const { tasks, members, deleteTask, selectedProjectId, selectedSprintId } = useApp();
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -30,7 +32,60 @@ export default function Tasks() {
   const [statusFilter, setStatusFilter] = useState<FilterStatus>('all');
   const [memberFilter, setMemberFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [sortOrder, setSortOrder] = useState<SortOrder>('newest');
+
+  // Initialize filters from URL params
+  useEffect(() => {
+    const type = searchParams.get('type');
+    const category = searchParams.get('category');
+    const status = searchParams.get('status');
+    const priority = searchParams.get('priority');
+    const member = searchParams.get('member');
+
+    if (type) setTypeFilter(type);
+    if (category) setCategoryFilter(category);
+    if (status) setStatusFilter(status as FilterStatus);
+    if (priority) setPriorityFilter(priority);
+    if (member) setMemberFilter(member);
+  }, [searchParams]);
+
+  // Update URL when filters change
+  const updateUrlParams = (key: string, value: string) => {
+    const newParams = new URLSearchParams(searchParams);
+    if (value === 'all') {
+      newParams.delete(key);
+    } else {
+      newParams.set(key, value);
+    }
+    setSearchParams(newParams);
+  };
+
+  const handleTypeFilter = (value: string) => {
+    setTypeFilter(value);
+    updateUrlParams('type', value);
+  };
+
+  const handleCategoryFilter = (value: string) => {
+    setCategoryFilter(value);
+    updateUrlParams('category', value);
+  };
+
+  const handleStatusFilter = (value: FilterStatus) => {
+    setStatusFilter(value);
+    updateUrlParams('status', value);
+  };
+
+  const handlePriorityFilter = (value: string) => {
+    setPriorityFilter(value);
+    updateUrlParams('priority', value);
+  };
+
+  const handleMemberFilter = (value: string) => {
+    setMemberFilter(value);
+    updateUrlParams('member', value);
+  };
 
   const filteredTasks = useMemo(() => {
     let result = tasks;
@@ -71,6 +126,16 @@ export default function Tasks() {
       result = result.filter(t => t.priority === Number(priorityFilter));
     }
 
+    // Type filter
+    if (typeFilter !== 'all') {
+      result = result.filter(t => t.type === typeFilter);
+    }
+
+    // Category filter
+    if (categoryFilter !== 'all') {
+      result = result.filter(t => t.category === categoryFilter);
+    }
+
     // Sort - P0 is highest priority (critical), P5 is lowest
     if (sortOrder === 'newest') {
       result = [...result].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -82,7 +147,7 @@ export default function Tasks() {
     }
 
     return result;
-  }, [tasks, selectedProjectId, selectedSprintId, search, statusFilter, memberFilter, priorityFilter, sortOrder]);
+  }, [tasks, selectedProjectId, selectedSprintId, search, statusFilter, memberFilter, priorityFilter, typeFilter, categoryFilter, sortOrder]);
 
   const statusFilters: { label: string; value: FilterStatus }[] = [
     { label: 'Todas', value: 'all' },
@@ -101,6 +166,19 @@ export default function Tasks() {
     setEditingTask(task);
   };
 
+  const clearAllFilters = () => {
+    setSearch('');
+    setStatusFilter('all');
+    setMemberFilter('all');
+    setPriorityFilter('all');
+    setTypeFilter('all');
+    setCategoryFilter('all');
+    setSortOrder('newest');
+    setSearchParams({});
+  };
+
+  const hasActiveFilters = statusFilter !== 'all' || memberFilter !== 'all' || priorityFilter !== 'all' || typeFilter !== 'all' || categoryFilter !== 'all';
+
   return (
     <>
       <Header 
@@ -118,6 +196,12 @@ export default function Tasks() {
             <Plus className="w-4 h-4 mr-2" />
             Nova Tarefa
           </Button>
+
+          {hasActiveFilters && (
+            <Button variant="ghost" size="sm" onClick={clearAllFilters}>
+              Limpar filtros
+            </Button>
+          )}
         </div>
 
         {/* Filters Bar */}
@@ -138,7 +222,7 @@ export default function Tasks() {
             {statusFilters.map((filter) => (
               <button
                 key={filter.value}
-                onClick={() => setStatusFilter(filter.value)}
+                onClick={() => handleStatusFilter(filter.value)}
                 className={cn(
                   'filter-chip',
                   statusFilter === filter.value && 'filter-chip-active'
@@ -149,8 +233,34 @@ export default function Tasks() {
             ))}
           </div>
 
+          {/* Type Filter */}
+          <Select value={typeFilter} onValueChange={handleTypeFilter}>
+            <SelectTrigger className="w-[150px] bg-card">
+              <SelectValue placeholder="Tipo" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os tipos</SelectItem>
+              <SelectItem value="frontend">Frontend</SelectItem>
+              <SelectItem value="backend">Backend</SelectItem>
+              <SelectItem value="fullstack">Fullstack</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Category Filter */}
+          <Select value={categoryFilter} onValueChange={handleCategoryFilter}>
+            <SelectTrigger className="w-[160px] bg-card">
+              <SelectValue placeholder="Categoria" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas categorias</SelectItem>
+              <SelectItem value="bug">Bug</SelectItem>
+              <SelectItem value="feature">Feature</SelectItem>
+              <SelectItem value="refinement">Refinamento</SelectItem>
+            </SelectContent>
+          </Select>
+
           {/* Member Filter */}
-          <Select value={memberFilter} onValueChange={setMemberFilter}>
+          <Select value={memberFilter} onValueChange={handleMemberFilter}>
             <SelectTrigger className="w-[180px] bg-card">
               <SelectValue placeholder="Responsável" />
             </SelectTrigger>
@@ -165,7 +275,7 @@ export default function Tasks() {
           </Select>
 
           {/* Priority Filter - P0 is highest */}
-          <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+          <Select value={priorityFilter} onValueChange={handlePriorityFilter}>
             <SelectTrigger className="w-[140px] bg-card">
               <SelectValue placeholder="Prioridade" />
             </SelectTrigger>
