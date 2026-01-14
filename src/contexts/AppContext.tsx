@@ -1,18 +1,35 @@
 import React, { createContext, useContext, useState, ReactNode, useMemo, useEffect, useCallback } from 'react';
 import { Project, Sprint, Task, TeamMember, Notification, NotificationSettings, DEFAULT_NOTIFICATION_SETTINGS } from '@/types';
 import { mockProjects, mockSprints, mockTasks, mockTeamMembers } from '@/data/mockData';
-import { differenceInDays, differenceInHours } from 'date-fns';
+import { differenceInDays, differenceInHours, addDays, format } from 'date-fns';
 
 const NOTIFICATION_SETTINGS_KEY = 'notification_settings';
 const NOTIFICATIONS_READ_KEY = 'notifications_read_state';
 const NOTIFICATIONS_DISMISSED_KEY = 'notifications_dismissed_at';
 const DISMISS_DURATION_HOURS = 24;
+const SYSTEM_CLEARED_KEY = 'system_data_cleared';
+const DATA_STORAGE_KEY = 'app_data_storage';
 
 interface NotificationReadState {
   [notificationId: string]: {
     isRead: boolean;
     readAt: string;
   };
+}
+
+interface StoredData {
+  projects: Project[];
+  sprints: Sprint[];
+  tasks: Task[];
+  members: TeamMember[];
+}
+
+interface SprintGenerationConfig {
+  startDate: Date;
+  durationDays: number;
+  namePattern: string;
+  endCriteria: 'end_of_year' | 'custom_date';
+  customEndDate?: Date;
 }
 
 interface AppContextType {
@@ -47,6 +64,7 @@ interface AppContextType {
   getTaskById: (id: string) => Task | undefined;
   clearDemoData: () => void;
   resetSystem: () => void;
+  generateGlobalSprints: (config: SprintGenerationConfig) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -54,11 +72,53 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 // Event for notifying components about data changes
 export const DATA_CHANGED_EVENT = 'app-data-changed';
 
+// Helper to parse dates from stored data
+const parseDates = (data: any): any => {
+  if (data === null || data === undefined) return data;
+  if (Array.isArray(data)) return data.map(parseDates);
+  if (typeof data === 'object') {
+    const result: any = {};
+    for (const key in data) {
+      if (['createdAt', 'updatedAt', 'startDate', 'endDate', 'completedAt', 'readAt'].includes(key) && data[key]) {
+        result[key] = new Date(data[key]);
+      } else {
+        result[key] = parseDates(data[key]);
+      }
+    }
+    return result;
+  }
+  return data;
+};
+
+// Load initial data - check if system was cleared
+const loadInitialData = (): StoredData => {
+  const isCleared = localStorage.getItem(SYSTEM_CLEARED_KEY);
+  
+  if (isCleared === 'true') {
+    // System was cleared, load from storage or return empty
+    const storedData = localStorage.getItem(DATA_STORAGE_KEY);
+    if (storedData) {
+      return parseDates(JSON.parse(storedData));
+    }
+    return { projects: [], sprints: [], tasks: [], members: [] };
+  }
+  
+  // First time or not cleared, use mock data
+  return {
+    projects: mockProjects,
+    sprints: mockSprints,
+    tasks: mockTasks,
+    members: mockTeamMembers,
+  };
+};
+
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [projects, setProjects] = useState<Project[]>(mockProjects);
-  const [sprints, setSprints] = useState<Sprint[]>(mockSprints);
-  const [tasks, setTasks] = useState<Task[]>(mockTasks);
-  const [members, setMembers] = useState<TeamMember[]>(mockTeamMembers);
+  const initialData = loadInitialData();
+  
+  const [projects, setProjects] = useState<Project[]>(initialData.projects);
+  const [sprints, setSprints] = useState<Sprint[]>(initialData.sprints);
+  const [tasks, setTasks] = useState<Task[]>(initialData.tasks);
+  const [members, setMembers] = useState<TeamMember[]>(initialData.members);
   const [assignedNotifications, setAssignedNotifications] = useState<Notification[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [selectedSprintId, setSelectedSprintId] = useState<string | null>(null);
@@ -83,12 +143,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (hoursSinceDismissal < DISMISS_DURATION_HOURS) {
         return true;
       } else {
-        // 24h passed, check if autoRepeat is enabled
         const settings = localStorage.getItem(NOTIFICATION_SETTINGS_KEY);
         const parsedSettings = settings ? JSON.parse(settings) : DEFAULT_NOTIFICATION_SETTINGS;
         if (parsedSettings.autoRepeat24h) {
           localStorage.removeItem(NOTIFICATIONS_DISMISSED_KEY);
-          // Reset read state for overdue notifications
           const newReadState = { ...readState };
           Object.keys(newReadState).forEach(key => {
             if (key.includes('overdue') || key.includes('pending')) {
@@ -102,6 +160,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     return false;
   });
+
+  // Persist data to localStorage whenever it changes
+  useEffect(() => {
+    const isCleared = localStorage.getItem(SYSTEM_CLEARED_KEY);
+    if (isCleared === 'true') {
+      const dataToStore: StoredData = { projects, sprints, tasks, members };
+      localStorage.setItem(DATA_STORAGE_KEY, JSON.stringify(dataToStore));
+    }
+  }, [projects, sprints, tasks, members]);
 
   // Persist notification settings
   useEffect(() => {
@@ -122,14 +189,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const notifs: Notification[] = [];
     const now = new Date();
 
-    // Collect overdue tasks (>30 days)
     const overdueTasks = tasks.filter(task => {
       if (task.isDelivered) return false;
       const daysSinceCreation = differenceInDays(now, new Date(task.createdAt));
       return daysSinceCreation > 30;
     });
 
-    // Create grouped notification for overdue tasks
     if (notificationSettings.overdueTasksEnabled && overdueTasks.length > 0) {
       const notifId = 'grouped-overdue';
       notifs.push({
@@ -144,14 +209,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
     }
 
-    // Collect pending tasks (not delivered, not overdue)
     const pendingTasks = tasks.filter(task => {
       if (task.isDelivered) return false;
       const daysSinceCreation = differenceInDays(now, new Date(task.createdAt));
       return daysSinceCreation <= 30 && daysSinceCreation > 7;
     });
 
-    // Create grouped notification for pending tasks
     if (notificationSettings.pendingTasksEnabled && pendingTasks.length > 0) {
       const notifId = 'grouped-pending';
       notifs.push({
@@ -166,7 +229,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
     }
 
-    // Add assigned notifications
     if (notificationSettings.assignedTasksEnabled) {
       assignedNotifications.forEach(n => {
         notifs.push({
@@ -188,18 +250,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
       updatedAt: new Date(),
     };
     setProjects(prev => [...prev, newProject]);
+    window.dispatchEvent(new CustomEvent(DATA_CHANGED_EVENT));
   };
 
   const updateProject = (id: string, data: Partial<Project>) => {
     setProjects(prev =>
       prev.map(p => (p.id === id ? { ...p, ...data, updatedAt: new Date() } : p))
     );
+    window.dispatchEvent(new CustomEvent(DATA_CHANGED_EVENT));
   };
 
   const deleteProject = (id: string) => {
     setProjects(prev => prev.filter(p => p.id !== id));
     setSprints(prev => prev.filter(s => s.projectId !== id));
     setTasks(prev => prev.filter(t => t.projectId !== id));
+    window.dispatchEvent(new CustomEvent(DATA_CHANGED_EVENT));
   };
 
   const addSprint = (sprint: Omit<Sprint, 'id' | 'createdAt'>) => {
@@ -209,15 +274,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
       createdAt: new Date(),
     };
     setSprints(prev => [...prev, newSprint]);
+    window.dispatchEvent(new CustomEvent(DATA_CHANGED_EVENT));
   };
 
   const updateSprint = (id: string, data: Partial<Sprint>) => {
     setSprints(prev => prev.map(s => (s.id === id ? { ...s, ...data } : s)));
+    window.dispatchEvent(new CustomEvent(DATA_CHANGED_EVENT));
   };
 
   const deleteSprint = (id: string) => {
     setSprints(prev => prev.filter(s => s.id !== id));
     setTasks(prev => prev.filter(t => t.sprintId !== id));
+    window.dispatchEvent(new CustomEvent(DATA_CHANGED_EVENT));
   };
 
   const addTask = (task: Omit<Task, 'id' | 'createdAt'>) => {
@@ -228,7 +296,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
     setTasks(prev => [...prev, newTask]);
 
-    // Create notification for assigned members
     if (notificationSettings.assignedTasksEnabled) {
       task.assignees.forEach(memberId => {
         const member = members.find(m => m.id === memberId);
@@ -247,14 +314,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
       });
     }
+    
+    window.dispatchEvent(new CustomEvent(DATA_CHANGED_EVENT));
   };
 
   const updateTask = (id: string, data: Partial<Task>) => {
     setTasks(prev => prev.map(t => (t.id === id ? { ...t, ...data } : t)));
+    window.dispatchEvent(new CustomEvent(DATA_CHANGED_EVENT));
   };
 
   const deleteTask = (id: string) => {
     setTasks(prev => prev.filter(t => t.id !== id));
+    window.dispatchEvent(new CustomEvent(DATA_CHANGED_EVENT));
   };
 
   const addMember = (member: Omit<TeamMember, 'id' | 'createdAt'>) => {
@@ -264,14 +335,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
       createdAt: new Date(),
     };
     setMembers(prev => [...prev, newMember]);
+    window.dispatchEvent(new CustomEvent(DATA_CHANGED_EVENT));
   };
 
   const updateMember = (id: string, data: Partial<TeamMember>) => {
     setMembers(prev => prev.map(m => (m.id === id ? { ...m, ...data } : m)));
+    window.dispatchEvent(new CustomEvent(DATA_CHANGED_EVENT));
   };
 
   const deleteMember = (id: string) => {
     setMembers(prev => prev.filter(m => m.id !== id));
+    window.dispatchEvent(new CustomEvent(DATA_CHANGED_EVENT));
   };
 
   const markNotificationAsRead = useCallback((id: string) => {
@@ -320,28 +394,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setTasks(prev => [...prev, ...tasksWithIds]);
     }
     
-    // Dispatch event to notify components of data change
+    // Mark system as having user data
+    localStorage.setItem(SYSTEM_CLEARED_KEY, 'true');
+    
     window.dispatchEvent(new CustomEvent(DATA_CHANGED_EVENT));
   };
 
   const clearDemoData = useCallback(() => {
-    // Clear only mock/demo data (those with specific prefixes)
-    setProjects(prev => prev.filter(p => !p.id.startsWith('proj-') || p.id.length > 15));
-    setSprints(prev => prev.filter(s => !s.id.startsWith('sprint-') || s.id.length > 15));
-    setTasks(prev => prev.filter(t => !t.id.startsWith('task-') || t.id.length > 15));
-    setMembers(prev => prev.filter(m => !m.id.startsWith('member-') || m.id.length > 15));
-    
-    // Actually clear all demo data (mockData has specific IDs)
     setProjects([]);
     setSprints([]);
     setTasks([]);
     setMembers([]);
     
+    // Mark system as cleared to prevent mock data from reappearing
+    localStorage.setItem(SYSTEM_CLEARED_KEY, 'true');
+    localStorage.setItem(DATA_STORAGE_KEY, JSON.stringify({ projects: [], sprints: [], tasks: [], members: [] }));
+    
     window.dispatchEvent(new CustomEvent(DATA_CHANGED_EVENT));
   }, []);
 
   const resetSystem = useCallback(() => {
-    // Remove all data and reset to initial state
     setProjects([]);
     setSprints([]);
     setTasks([]);
@@ -350,12 +422,66 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setSelectedProjectId(null);
     setSelectedSprintId(null);
     setReadState({});
+    
+    // Mark system as cleared and remove all stored data
+    localStorage.setItem(SYSTEM_CLEARED_KEY, 'true');
+    localStorage.setItem(DATA_STORAGE_KEY, JSON.stringify({ projects: [], sprints: [], tasks: [], members: [] }));
     localStorage.removeItem(NOTIFICATIONS_READ_KEY);
     localStorage.removeItem(NOTIFICATIONS_DISMISSED_KEY);
     setIsAlertsDismissed(false);
     
     window.dispatchEvent(new CustomEvent(DATA_CHANGED_EVENT));
   }, []);
+
+  const generateGlobalSprints = useCallback((config: SprintGenerationConfig) => {
+    const { startDate, durationDays, namePattern, endCriteria, customEndDate } = config;
+    
+    // Determine end date
+    let endDate: Date;
+    if (endCriteria === 'end_of_year') {
+      endDate = new Date(startDate.getFullYear(), 11, 31); // Dec 31
+    } else {
+      endDate = customEndDate || new Date(startDate.getFullYear(), 11, 31);
+    }
+    
+    const newSprints: Sprint[] = [];
+    let currentStart = new Date(startDate);
+    let sprintNumber = 1;
+    
+    while (currentStart < endDate) {
+      const currentEnd = addDays(currentStart, durationDays - 1);
+      
+      // Don't create sprint if it would end after the end date
+      if (currentEnd > endDate) break;
+      
+      // Generate name based on pattern
+      const sprintName = namePattern.replace('#', String(sprintNumber).padStart(2, '0'));
+      
+      // Create sprint for each project
+      projects.forEach(project => {
+        newSprints.push({
+          id: `sprint-${generateId()}`,
+          projectId: project.id,
+          name: sprintName,
+          startDate: new Date(currentStart),
+          endDate: new Date(currentEnd),
+          createdAt: new Date(),
+        });
+      });
+      
+      // Move to next sprint period
+      currentStart = addDays(currentEnd, 1);
+      sprintNumber++;
+    }
+    
+    // Add all new sprints
+    setSprints(prev => [...prev, ...newSprints]);
+    
+    // Mark as having user data
+    localStorage.setItem(SYSTEM_CLEARED_KEY, 'true');
+    
+    window.dispatchEvent(new CustomEvent(DATA_CHANGED_EVENT));
+  }, [projects, generateId]);
 
   return (
     <AppContext.Provider
@@ -391,6 +517,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         getTaskById,
         clearDemoData,
         resetSystem,
+        generateGlobalSprints,
       }}
     >
       {children}

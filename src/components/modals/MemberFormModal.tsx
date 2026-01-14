@@ -13,9 +13,10 @@ interface MemberFormModalProps {
   member?: TeamMember | null;
   open: boolean;
   onClose: () => void;
+  defaultName?: string;
 }
 
-export function MemberFormModal({ member, open, onClose }: MemberFormModalProps) {
+export function MemberFormModal({ member, open, onClose, defaultName }: MemberFormModalProps) {
   const { addMember, updateMember } = useApp();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -35,13 +36,13 @@ export function MemberFormModal({ member, open, onClose }: MemberFormModalProps)
       });
     } else {
       setFormData({
-        name: '',
+        name: defaultName || '',
         email: '',
         phone: '',
         photoUrl: '',
       });
     }
-  }, [member, open]);
+  }, [member, open, defaultName]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
