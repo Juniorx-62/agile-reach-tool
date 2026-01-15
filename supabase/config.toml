@@ -1,1 +1,7 @@
 project_id = "glhcauxykevvbxqgxkyk"
+
+[functions.summarize-task]
+verify_jwt = false
+
+[functions.parse-spreadsheet]
+verify_jwt = false
