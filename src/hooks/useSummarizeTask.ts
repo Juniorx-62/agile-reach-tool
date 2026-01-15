@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 export function useSummarizeTask() {
   const [isLoading, setIsLoading] = useState(false);
@@ -17,25 +18,19 @@ export function useSummarizeTask() {
     setIsLoading(true);
 
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/summarize-task`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
-          body: JSON.stringify({ description }),
-        }
-      );
+      const { data, error } = await supabase.functions.invoke('summarize-task', {
+        body: { description },
+      });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Erro ao gerar resumo');
+      if (error) {
+        throw new Error(error.message || 'Erro ao gerar resumo');
       }
 
-      return data.summary;
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      return data?.summary || null;
     } catch (error) {
       console.error('Summarize error:', error);
       toast({
