@@ -156,11 +156,11 @@ export default function Dashboard() {
   }, [navigate]);
 
   const handleCompletedClick = useCallback(() => {
-    navigate('/tasks?status=delivered');
+    navigate('/tasks?status=completed');
   }, [navigate]);
 
   const handleIncidentsClick = useCallback(() => {
-    navigate('/tasks?incident=true');
+    navigate('/tasks?hasIncident=true');
   }, [navigate]);
 
   return (

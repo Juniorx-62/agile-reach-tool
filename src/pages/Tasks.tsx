@@ -34,6 +34,7 @@ export default function Tasks() {
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [incidentFilter, setIncidentFilter] = useState<string>('all');
   const [sortOrder, setSortOrder] = useState<SortOrder>('newest');
 
   // Initialize filters from URL params
@@ -43,12 +44,14 @@ export default function Tasks() {
     const status = searchParams.get('status');
     const priority = searchParams.get('priority');
     const member = searchParams.get('member');
+    const hasIncident = searchParams.get('hasIncident');
 
     if (type) setTypeFilter(type);
     if (category) setCategoryFilter(category);
     if (status) setStatusFilter(status as FilterStatus);
     if (priority) setPriorityFilter(priority);
     if (member) setMemberFilter(member);
+    if (hasIncident) setIncidentFilter(hasIncident);
   }, [searchParams]);
 
   // Update URL when filters change
@@ -136,6 +139,11 @@ export default function Tasks() {
       result = result.filter(t => t.category === categoryFilter);
     }
 
+    // Incident filter
+    if (incidentFilter === 'true') {
+      result = result.filter(t => t.hasIncident);
+    }
+
     // Sort - P0 is highest priority (critical), P5 is lowest
     if (sortOrder === 'newest') {
       result = [...result].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -147,7 +155,7 @@ export default function Tasks() {
     }
 
     return result;
-  }, [tasks, selectedProjectId, selectedSprintId, search, statusFilter, memberFilter, priorityFilter, typeFilter, categoryFilter, sortOrder]);
+  }, [tasks, selectedProjectId, selectedSprintId, search, statusFilter, memberFilter, priorityFilter, typeFilter, categoryFilter, incidentFilter, sortOrder]);
 
   const statusFilters: { label: string; value: FilterStatus }[] = [
     { label: 'Todas', value: 'all' },
@@ -173,11 +181,12 @@ export default function Tasks() {
     setPriorityFilter('all');
     setTypeFilter('all');
     setCategoryFilter('all');
+    setIncidentFilter('all');
     setSortOrder('newest');
     setSearchParams({});
   };
 
-  const hasActiveFilters = statusFilter !== 'all' || memberFilter !== 'all' || priorityFilter !== 'all' || typeFilter !== 'all' || categoryFilter !== 'all';
+  const hasActiveFilters = statusFilter !== 'all' || memberFilter !== 'all' || priorityFilter !== 'all' || typeFilter !== 'all' || categoryFilter !== 'all' || incidentFilter !== 'all';
 
   return (
     <>
