@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Settings as SettingsIcon, Bell, Database, Save, Check } from 'lucide-react';
+import { Settings as SettingsIcon, Bell, Database, Save, Check, Calendar } from 'lucide-react';
 import { useApp } from '@/contexts/AppContext';
 import { Header } from '@/components/layout/Header';
 import { Switch } from '@/components/ui/switch';
@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { ConfirmationModal } from '@/components/modals/ConfirmationModal';
-
+import { GlobalSprintModal } from '@/components/modals/GlobalSprintModal';
 export default function Settings() {
   const { notificationSettings, updateNotificationSettings, clearDemoData, resetSystem } = useApp();
   const { toast } = useToast();
@@ -16,6 +16,7 @@ export default function Settings() {
   const [isSaving, setIsSaving] = useState(false);
   const [showClearModal, setShowClearModal] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
+  const [showGlobalSprintModal, setShowGlobalSprintModal] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
 
@@ -63,7 +64,7 @@ export default function Settings() {
       
       <div className="p-6 animate-fade-in">
         <div className="max-w-2xl mx-auto space-y-6">
-          {/* Sprint Duration */}
+          {/* Sprint Settings */}
           <div className="stat-card">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2 rounded-lg bg-primary/10">
@@ -87,6 +88,27 @@ export default function Settings() {
                 <p className="text-xs text-muted-foreground mt-1">
                   Será usada como padrão ao criar novas sprints
                 </p>
+              </div>
+              
+              {/* Global Sprint Generator */}
+              <div className="flex items-center justify-between p-4 bg-primary/5 rounded-lg border border-primary/20">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-primary" />
+                    <p className="font-medium text-foreground">Gerar Sprints Globais</p>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Crie sprints automaticamente para todos os projetos com base em um período definido
+                  </p>
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setShowGlobalSprintModal(true)}
+                  className="border-primary/30 hover:bg-primary/10"
+                >
+                  Gerar Sprints
+                </Button>
               </div>
             </div>
           </div>
@@ -236,6 +258,12 @@ export default function Settings() {
         confirmText="Resetar Tudo"
         variant="destructive"
         isLoading={isResetting}
+      />
+
+      {/* Global Sprint Modal */}
+      <GlobalSprintModal
+        open={showGlobalSprintModal}
+        onClose={() => setShowGlobalSprintModal(false)}
       />
     </>
   );

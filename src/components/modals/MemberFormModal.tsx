@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,7 @@ import { TeamMember } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import { Loader2, Upload } from 'lucide-react';
 import { AvatarPlaceholder } from '@/components/ui/avatar-placeholder';
-
+import { formatPhoneNumber, extractNumbers, getPhoneValidationError, isValidPhoneNumber } from '@/lib/phone-mask';
 interface MemberFormModalProps {
   member?: TeamMember | null;
   open: boolean;
@@ -31,7 +31,8 @@ export function MemberFormModal({ member, open, onClose, defaultName }: MemberFo
       setFormData({
         name: member.name,
         email: member.email,
-        phone: member.phone || '',
+        // Format phone when loading for editing
+        phone: formatPhoneNumber(member.phone || ''),
         photoUrl: member.photoUrl || '',
       });
     } else {
@@ -43,6 +44,15 @@ export function MemberFormModal({ member, open, onClose, defaultName }: MemberFo
       });
     }
   }, [member, open, defaultName]);
+
+  // Phone input handler with mask
+  const handlePhoneChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatPhoneNumber(e.target.value);
+    setFormData(prev => ({ ...prev, phone: formatted }));
+  }, []);
+
+  // Get phone validation error for display
+  const phoneError = getPhoneValidationError(formData.phone);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,15 +69,27 @@ export function MemberFormModal({ member, open, onClose, defaultName }: MemberFo
       toast({ title: 'Erro', description: 'E-mail inválido', variant: 'destructive' });
       return;
     }
+    
+    // Validate phone if provided
+    if (formData.phone && !isValidPhoneNumber(formData.phone)) {
+      toast({ title: 'Erro', description: phoneError || 'Telefone inválido', variant: 'destructive' });
+      return;
+    }
 
     setLoading(true);
     await new Promise(resolve => setTimeout(resolve, 500));
 
+    // Save only the numeric digits to the database
+    const dataToSave = {
+      ...formData,
+      phone: extractNumbers(formData.phone),
+    };
+
     if (member) {
-      updateMember(member.id, formData);
+      updateMember(member.id, dataToSave);
       toast({ title: 'Sucesso', description: 'Membro atualizado com sucesso!' });
     } else {
-      addMember(formData);
+      addMember(dataToSave);
       toast({ title: 'Sucesso', description: 'Membro adicionado com sucesso!' });
     }
 
@@ -126,9 +148,17 @@ export function MemberFormModal({ member, open, onClose, defaultName }: MemberFo
             <Label>Telefone</Label>
             <Input
               value={formData.phone}
-              onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+              onChange={handlePhoneChange}
               placeholder="(11) 99999-9999"
+              maxLength={16}
+              className={phoneError ? 'border-destructive' : ''}
             />
+            {phoneError && (
+              <p className="text-xs text-destructive">{phoneError}</p>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Formato: (DDD) número. Ex: (11) 99999-9999
+            </p>
           </div>
 
           <DialogFooter>

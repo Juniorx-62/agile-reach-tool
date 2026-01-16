@@ -156,34 +156,34 @@ serve(async (req) => {
   }
 
   try {
-    // Validate authentication
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(
-        JSON.stringify({ error: "Autenticação necessária" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
-
-    const token = authHeader.replace('Bearer ', '');
-    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+    // Log request start
+    console.log("Parse spreadsheet request received");
     
-    if (claimsError || !claimsData?.claims) {
-      console.error("Auth validation failed:", claimsError);
-      return new Response(
-        JSON.stringify({ error: "Token inválido ou expirado" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    // Optional authentication - allow both authenticated and anonymous requests
+    // since this app uses localStorage for data storage
+    const authHeader = req.headers.get('Authorization');
+    let userId = 'anonymous';
+    
+    if (authHeader?.startsWith('Bearer ')) {
+      try {
+        const supabase = createClient(
+          Deno.env.get('SUPABASE_URL')!,
+          Deno.env.get('SUPABASE_ANON_KEY')!,
+          { global: { headers: { Authorization: authHeader } } }
+        );
 
-    const userId = claimsData.claims.sub;
-    console.log("Authenticated user:", userId);
+        const token = authHeader.replace('Bearer ', '');
+        const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+        
+        if (!claimsError && claimsData?.claims?.sub) {
+          userId = claimsData.claims.sub;
+        }
+      } catch (authErr) {
+        console.log("Auth check failed, continuing as anonymous:", authErr);
+      }
+    }
+    
+    console.log("Processing request for user:", userId);
 
     const { spreadsheetData, registeredMembers } = await req.json();
     
