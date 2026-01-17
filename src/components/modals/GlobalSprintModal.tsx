@@ -21,6 +21,7 @@ export function GlobalSprintModal({ open, onClose }: GlobalSprintModalProps) {
     startDate: format(new Date(), 'yyyy-MM-dd'),
     durationDays: 14,
     namePattern: 'Sprint #',
+    startNumber: 1,
     endCriteria: 'end_of_year' as 'end_of_year' | 'custom_date',
     customEndDate: format(new Date(new Date().getFullYear(), 11, 31), 'yyyy-MM-dd'),
   });
@@ -73,6 +74,7 @@ export function GlobalSprintModal({ open, onClose }: GlobalSprintModalProps) {
       startDate: new Date(formData.startDate),
       durationDays: formData.durationDays,
       namePattern: formData.namePattern,
+      startNumber: formData.startNumber,
       endCriteria: formData.endCriteria,
       customEndDate: formData.endCriteria === 'custom_date' ? new Date(formData.customEndDate) : undefined,
     });
@@ -121,15 +123,29 @@ export function GlobalSprintModal({ open, onClose }: GlobalSprintModalProps) {
             </p>
           </div>
 
-          <div className="space-y-2">
-            <Label>Duração da Sprint (dias)</Label>
-            <Input
-              type="number"
-              min={1}
-              max={60}
-              value={formData.durationDays}
-              onChange={(e) => setFormData(prev => ({ ...prev, durationDays: Number(e.target.value) }))}
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Duração da Sprint (dias)</Label>
+              <Input
+                type="number"
+                min={1}
+                max={60}
+                value={formData.durationDays}
+                onChange={(e) => setFormData(prev => ({ ...prev, durationDays: Number(e.target.value) }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Número Inicial</Label>
+              <Input
+                type="number"
+                min={1}
+                value={formData.startNumber}
+                onChange={(e) => setFormData(prev => ({ ...prev, startNumber: Number(e.target.value) }))}
+              />
+              <p className="text-xs text-muted-foreground">
+                Exemplo: Sprint 01, Sprint 02...
+              </p>
+            </div>
           </div>
 
           <div className="space-y-3">

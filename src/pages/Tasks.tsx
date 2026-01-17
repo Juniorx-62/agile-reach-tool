@@ -90,6 +90,11 @@ export default function Tasks() {
     updateUrlParams('member', value);
   };
 
+  const handleIncidentFilter = (value: string) => {
+    setIncidentFilter(value);
+    updateUrlParams('hasIncident', value);
+  };
+
   const filteredTasks = useMemo(() => {
     let result = tasks;
 
@@ -296,6 +301,17 @@ export default function Tasks() {
               <SelectItem value="3">P3 - Média</SelectItem>
               <SelectItem value="4">P4 - Baixa</SelectItem>
               <SelectItem value="5">P5 - Muito Baixa</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Incident Filter */}
+          <Select value={incidentFilter} onValueChange={handleIncidentFilter}>
+            <SelectTrigger className={cn("w-[150px] bg-card", incidentFilter === 'true' && "border-warning text-warning")}>
+              <SelectValue placeholder="Intercorrência" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas</SelectItem>
+              <SelectItem value="true">Com Intercorrência</SelectItem>
             </SelectContent>
           </Select>
 
