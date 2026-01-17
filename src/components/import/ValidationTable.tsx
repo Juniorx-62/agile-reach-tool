@@ -5,7 +5,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { ParsedTask, ValidationError } from '@/hooks/useSpreadsheetParser';
 import { cn } from '@/lib/utils';
 
@@ -159,123 +158,123 @@ export function ValidationTable({
 
   return (
     <div className="border rounded-lg overflow-hidden">
-      <ScrollArea className="h-[400px]">
-        <div className="overflow-x-auto min-w-max">
-          <Table>
-        <TableHeader className="sticky top-0 bg-background z-10">
-          <TableRow className="bg-muted/50">
-            <TableHead className="text-xs w-16">Status</TableHead>
-            <TableHead className="text-xs">Sprint</TableHead>
-            <TableHead className="text-xs">Projeto</TableHead>
-            <TableHead className="text-xs">Demanda</TableHead>
-            <TableHead className="text-xs">Prioridade</TableHead>
-            <TableHead className="text-xs">Título</TableHead>
-            <TableHead className="text-xs">Tipo</TableHead>
-            <TableHead className="text-xs">Categoria</TableHead>
-            <TableHead className="text-xs">Responsáveis</TableHead>
-            <TableHead className="text-xs">Estimativa</TableHead>
-            <TableHead className="text-xs">Intercorr.</TableHead>
-            <TableHead className="text-xs">Entregue</TableHead>
-            <TableHead className="text-xs w-20">Ações</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {tasks.map((task) => {
-            const rowIndex = task.rowIndex;
-            const isIgnored = ignoredRows.has(rowIndex);
-            const rowErrors = errors.filter(e => e.row === rowIndex);
-            const hasErrors = rowErrors.some(e => e.severity === 'error');
-            const hasWarnings = rowErrors.some(e => e.severity === 'warning');
-
-            return (
-              <TableRow 
-                key={rowIndex} 
-                className={cn(
-                  'transition-colors',
-                  isIgnored && 'opacity-40 bg-muted/30',
-                  !isIgnored && hasErrors && 'bg-destructive/5',
-                  !isIgnored && !hasErrors && hasWarnings && 'bg-warning/5'
-                )}
-              >
-                <TableCell className="text-xs">
-                  {isIgnored ? (
-                    <Badge variant="outline" className="text-[10px]">Ignorado</Badge>
-                  ) : hasErrors ? (
-                    <XCircle className="w-4 h-4 text-destructive" />
-                  ) : hasWarnings ? (
-                    <AlertCircle className="w-4 h-4 text-warning" />
-                  ) : (
-                    <CheckCircle2 className="w-4 h-4 text-success" />
-                  )}
-                </TableCell>
-                <TableCell className="text-xs font-medium">{task.sprint}</TableCell>
-                {renderCell(task, 'projeto', task.projeto, 'Projeto')}
-                {renderCell(task, 'demanda', task.demanda, 'Demanda')}
-                {renderCell(task, 'prioridade', task.prioridade !== null ? `p${task.prioridade}` : '-', 'Prioridade')}
-                {renderCell(task, 'titulo', task.titulo, 'Título')}
-                {renderCell(task, 'tipo', task.tipo, 'Tipo')}
-                {renderCell(task, 'categoria', task.categoria, 'Categoria')}
-                <TableCell className="text-xs">
-                  <div className="flex flex-wrap gap-1">
-                    {task.responsaveis.length === 0 ? (
-                      <span className="text-muted-foreground italic">-</span>
-                    ) : (
-                      task.responsaveis.map((r, i) => {
-                        const hasError = errors.some(
-                          e => e.row === rowIndex && 
-                               e.column === 'Responsável' && 
-                               e.message.includes(r)
-                        );
-                        return (
-                          <Badge 
-                            key={i}
-                            variant={hasError ? 'outline' : 'secondary'}
-                            className={cn(
-                              'text-[10px]',
-                              hasError && 'border-warning text-warning cursor-pointer hover:bg-warning/10'
-                            )}
-                            onClick={hasError ? () => onCreateMember(r) : undefined}
-                          >
-                            {hasError && <UserPlus className="w-3 h-3 mr-1" />}
-                            {r}
-                          </Badge>
-                        );
-                      })
-                    )}
-                  </div>
-                </TableCell>
-                {renderCell(task, 'estimativa', task.estimativa > 0 ? `${Number(task.estimativa).toFixed(1)}h` : '-', 'Estimativa')}
-                <TableCell className="text-xs">
-                  <Badge variant={task.intercorrencia ? 'destructive' : 'secondary'} className="text-[10px]">
-                    {task.intercorrencia ? 'Sim' : 'Não'}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-xs">
-                  <Badge variant={task.entregue ? 'default' : 'outline'} className="text-[10px]">
-                    {task.entregue ? 'Sim' : 'Não'}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-xs">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6"
-                    onClick={() => onIgnoreRow(rowIndex)}
-                    title={isIgnored ? 'Restaurar linha' : 'Ignorar linha'}
-                  >
-                    <Trash2 className={cn(
-                      'w-3 h-3',
-                      isIgnored ? 'text-success' : 'text-destructive'
-                    )} />
-                  </Button>
-                </TableCell>
+      <div className="overflow-x-auto">
+        <div className="max-h-[400px] overflow-y-auto">
+          <Table className="min-w-[1200px]">
+            <TableHeader className="sticky top-0 bg-background z-10">
+              <TableRow className="bg-muted/50">
+                <TableHead className="text-xs w-16 whitespace-nowrap">Status</TableHead>
+                <TableHead className="text-xs whitespace-nowrap min-w-[100px]">Sprint</TableHead>
+                <TableHead className="text-xs whitespace-nowrap min-w-[120px]">Projeto</TableHead>
+                <TableHead className="text-xs whitespace-nowrap min-w-[100px]">Demanda</TableHead>
+                <TableHead className="text-xs whitespace-nowrap min-w-[80px]">Prioridade</TableHead>
+                <TableHead className="text-xs whitespace-nowrap min-w-[200px]">Título</TableHead>
+                <TableHead className="text-xs whitespace-nowrap min-w-[90px]">Tipo</TableHead>
+                <TableHead className="text-xs whitespace-nowrap min-w-[100px]">Categoria</TableHead>
+                <TableHead className="text-xs whitespace-nowrap min-w-[140px]">Responsáveis</TableHead>
+                <TableHead className="text-xs whitespace-nowrap min-w-[80px]">Estimativa</TableHead>
+                <TableHead className="text-xs whitespace-nowrap min-w-[80px]">Intercorr.</TableHead>
+                <TableHead className="text-xs whitespace-nowrap min-w-[70px]">Entregue</TableHead>
+                <TableHead className="text-xs w-20 whitespace-nowrap">Ações</TableHead>
               </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
+            </TableHeader>
+            <TableBody>
+              {tasks.map((task) => {
+                const rowIndex = task.rowIndex;
+                const isIgnored = ignoredRows.has(rowIndex);
+                const rowErrors = errors.filter(e => e.row === rowIndex);
+                const hasErrors = rowErrors.some(e => e.severity === 'error');
+                const hasWarnings = rowErrors.some(e => e.severity === 'warning');
+
+                return (
+                  <TableRow 
+                    key={rowIndex} 
+                    className={cn(
+                      'transition-colors',
+                      isIgnored && 'opacity-40 bg-muted/30',
+                      !isIgnored && hasErrors && 'bg-destructive/5',
+                      !isIgnored && !hasErrors && hasWarnings && 'bg-warning/5'
+                    )}
+                  >
+                    <TableCell className="text-xs">
+                      {isIgnored ? (
+                        <Badge variant="outline" className="text-[10px]">Ignorado</Badge>
+                      ) : hasErrors ? (
+                        <XCircle className="w-4 h-4 text-destructive" />
+                      ) : hasWarnings ? (
+                        <AlertCircle className="w-4 h-4 text-warning" />
+                      ) : (
+                        <CheckCircle2 className="w-4 h-4 text-success" />
+                      )}
+                    </TableCell>
+                    <TableCell className="text-xs font-medium whitespace-nowrap">{task.sprint}</TableCell>
+                    {renderCell(task, 'projeto', task.projeto, 'Projeto')}
+                    {renderCell(task, 'demanda', task.demanda, 'Demanda')}
+                    {renderCell(task, 'prioridade', task.prioridade !== null ? `p${task.prioridade}` : '-', 'Prioridade')}
+                    {renderCell(task, 'titulo', task.titulo, 'Título')}
+                    {renderCell(task, 'tipo', task.tipo, 'Tipo')}
+                    {renderCell(task, 'categoria', task.categoria, 'Categoria')}
+                    <TableCell className="text-xs">
+                      <div className="flex flex-wrap gap-1 min-w-[120px]">
+                        {task.responsaveis.length === 0 ? (
+                          <span className="text-muted-foreground italic">-</span>
+                        ) : (
+                          task.responsaveis.map((r, i) => {
+                            const hasError = errors.some(
+                              e => e.row === rowIndex && 
+                                   e.column === 'Responsável' && 
+                                   e.message.includes(r)
+                            );
+                            return (
+                              <Badge 
+                                key={i}
+                                variant={hasError ? 'outline' : 'secondary'}
+                                className={cn(
+                                  'text-[10px]',
+                                  hasError && 'border-warning text-warning cursor-pointer hover:bg-warning/10'
+                                )}
+                                onClick={hasError ? () => onCreateMember(r) : undefined}
+                              >
+                                {hasError && <UserPlus className="w-3 h-3 mr-1" />}
+                                {r}
+                              </Badge>
+                            );
+                          })
+                        )}
+                      </div>
+                    </TableCell>
+                    {renderCell(task, 'estimativa', task.estimativa > 0 ? `${Number(task.estimativa).toFixed(1)}h` : '-', 'Estimativa')}
+                    <TableCell className="text-xs">
+                      <Badge variant={task.intercorrencia ? 'destructive' : 'secondary'} className="text-[10px]">
+                        {task.intercorrencia ? 'Sim' : 'Não'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      <Badge variant={task.entregue ? 'default' : 'outline'} className="text-[10px]">
+                        {task.entregue ? 'Sim' : 'Não'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => onIgnoreRow(rowIndex)}
+                        title={isIgnored ? 'Restaurar linha' : 'Ignorar linha'}
+                      >
+                        <Trash2 className={cn(
+                          'w-3 h-3',
+                          isIgnored ? 'text-success' : 'text-destructive'
+                        )} />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 }
