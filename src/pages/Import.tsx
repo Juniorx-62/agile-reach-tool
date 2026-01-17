@@ -393,16 +393,16 @@ export default function Import() {
 
       {/* Import Modal with Visual Validator */}
       <Dialog open={showModal} onOpenChange={handleCloseModal}>
-        <DialogContent className="max-w-6xl max-h-[90vh]">
-          <DialogHeader>
+        <DialogContent className="max-w-6xl max-h-[90vh] flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <FileSpreadsheet className="w-5 h-5" />
               Validação da Importação
             </DialogTitle>
           </DialogHeader>
           
-          <ScrollArea className="max-h-[60vh]">
-            <div className="space-y-4 pr-4">
+          <div className="flex-1 overflow-y-auto min-h-0">
+            <div className="space-y-4 pr-2">
               {/* File Info */}
               <p className="text-sm text-muted-foreground">
                 Arquivo: <span className="font-medium text-foreground">{file?.name}</span>
@@ -456,9 +456,9 @@ export default function Import() {
                 </RadioGroup>
               </div>
             </div>
-          </ScrollArea>
+          </div>
 
-          <DialogFooter className="mt-4 gap-2">
+          <DialogFooter className="flex-shrink-0 mt-4 gap-2 border-t pt-4 bg-background">
             <Button variant="outline" onClick={handleCloseModal} disabled={importing}>
               Cancelar
             </Button>

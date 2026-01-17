@@ -40,15 +40,27 @@ export default function ProjectDetail() {
 
   const stats = useMemo(() => {
     const completed = projectTasks.filter(t => t.isDelivered);
-    const totalHours = projectTasks.reduce((sum, t) => sum + t.estimatedHours, 0);
-    const completedHours = completed.reduce((sum, t) => sum + t.estimatedHours, 0);
+    const totalHours = projectTasks.reduce((sum, t) => {
+      const hours = Number(t.estimatedHours) || 0;
+      return sum + (isFinite(hours) && hours >= 0 && hours < 100000 ? hours : 0);
+    }, 0);
+    const completedHours = completed.reduce((sum, t) => {
+      const hours = Number(t.estimatedHours) || 0;
+      return sum + (isFinite(hours) && hours >= 0 && hours < 100000 ? hours : 0);
+    }, 0);
+
+    // Helper to format hours with max 1 decimal
+    const formatHours = (hours: number) => {
+      if (!isFinite(hours) || hours < 0 || hours >= 100000) return 0;
+      return Number.isInteger(hours) ? hours : Number(hours.toFixed(1));
+    };
 
     return {
       total: projectTasks.length,
       completed: completed.length,
       pending: projectTasks.length - completed.length,
-      totalHours,
-      completedHours,
+      totalHours: formatHours(totalHours),
+      completedHours: formatHours(completedHours),
       progress: projectTasks.length > 0 ? (completed.length / projectTasks.length) * 100 : 0,
     };
   }, [projectTasks]);
@@ -148,17 +160,19 @@ export default function ProjectDetail() {
 
           {projectSprints.length > 0 ? (
             <Tabs value={currentSprintId} onValueChange={setActiveSprintId}>
-              <TabsList className="bg-muted/50 p-1">
-                {projectSprints.map((sprint) => (
-                  <TabsTrigger 
-                    key={sprint.id} 
-                    value={sprint.id}
-                    className="data-[state=active]:bg-card"
-                  >
-                    {sprint.name}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
+              <div className="overflow-x-auto pb-2 -mx-1 px-1">
+                <TabsList className="bg-muted/50 p-1 inline-flex min-w-max">
+                  {projectSprints.map((sprint) => (
+                    <TabsTrigger 
+                      key={sprint.id} 
+                      value={sprint.id}
+                      className="data-[state=active]:bg-card whitespace-nowrap"
+                    >
+                      {sprint.name}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </div>
 
               {projectSprints.map((sprint) => {
                 const sprintTasks = projectTasks.filter(t => t.sprintId === sprint.id);

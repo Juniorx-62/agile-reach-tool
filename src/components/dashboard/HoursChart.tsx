@@ -9,11 +9,27 @@ interface HoursChartProps {
 }
 
 export function HoursChart({ data }: HoursChartProps) {
+  // Sanitize data to prevent invalid values
+  const sanitizedData = data.map(item => ({
+    name: item.name,
+    estimated: isFinite(item.estimated) && item.estimated >= 0 && item.estimated < 100000 
+      ? Number(item.estimated.toFixed(1)) 
+      : 0,
+    completed: isFinite(item.completed) && item.completed >= 0 && item.completed < 100000 
+      ? Number(item.completed.toFixed(1)) 
+      : 0,
+  }));
+
+  const maxValue = Math.max(
+    ...sanitizedData.map(d => Math.max(d.estimated, d.completed)),
+    10
+  );
+
   return (
     <div className="stat-card h-[300px]">
       <h3 className="text-sm font-semibold text-foreground mb-4">Horas Estimadas vs Concluídas</h3>
       <ResponsiveContainer width="100%" height="85%">
-        <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+        <AreaChart data={sanitizedData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id="estimatedGradient" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
@@ -26,7 +42,12 @@ export function HoursChart({ data }: HoursChartProps) {
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
           <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-          <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+          <YAxis 
+            stroke="hsl(var(--muted-foreground))" 
+            fontSize={12} 
+            domain={[0, Math.ceil(maxValue * 1.1)]}
+            tickFormatter={(value) => `${value}h`}
+          />
           <Tooltip
             contentStyle={{ 
               backgroundColor: 'hsl(var(--card))',
