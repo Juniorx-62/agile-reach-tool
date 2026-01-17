@@ -158,8 +158,10 @@ export function ValidationTable({
   };
 
   return (
-    <ScrollArea className="h-[400px] border rounded-lg">
-      <Table>
+    <div className="border rounded-lg overflow-hidden">
+      <ScrollArea className="h-[400px]">
+        <div className="overflow-x-auto min-w-max">
+          <Table>
         <TableHeader className="sticky top-0 bg-background z-10">
           <TableRow className="bg-muted/50">
             <TableHead className="text-xs w-16">Status</TableHead>
@@ -242,7 +244,7 @@ export function ValidationTable({
                     )}
                   </div>
                 </TableCell>
-                {renderCell(task, 'estimativa', task.estimativa > 0 ? `${task.estimativa}h` : '-', 'Estimativa')}
+                {renderCell(task, 'estimativa', task.estimativa > 0 ? `${Number(task.estimativa).toFixed(1)}h` : '-', 'Estimativa')}
                 <TableCell className="text-xs">
                   <Badge variant={task.intercorrencia ? 'destructive' : 'secondary'} className="text-[10px]">
                     {task.intercorrencia ? 'Sim' : 'Não'}
@@ -272,6 +274,8 @@ export function ValidationTable({
           })}
         </TableBody>
       </Table>
-    </ScrollArea>
+        </div>
+      </ScrollArea>
+    </div>
   );
 }

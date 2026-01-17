@@ -28,6 +28,7 @@ interface SprintGenerationConfig {
   startDate: Date;
   durationDays: number;
   namePattern: string;
+  startNumber: number;
   endCriteria: 'end_of_year' | 'custom_date';
   customEndDate?: Date;
 }
@@ -434,7 +435,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const generateGlobalSprints = useCallback((config: SprintGenerationConfig) => {
-    const { startDate, durationDays, namePattern, endCriteria, customEndDate } = config;
+    const { startDate, durationDays, namePattern, startNumber, endCriteria, customEndDate } = config;
     
     // Determine end date
     let endDate: Date;
@@ -446,7 +447,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     const newSprints: Sprint[] = [];
     let currentStart = new Date(startDate);
-    let sprintNumber = 1;
+    let sprintNumber = startNumber || 1;
     
     while (currentStart < endDate) {
       const currentEnd = addDays(currentStart, durationDays - 1);

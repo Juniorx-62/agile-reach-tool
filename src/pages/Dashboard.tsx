@@ -55,13 +55,18 @@ export default function Dashboard() {
     const completedHours = completed.reduce((sum, t) => sum + t.estimatedHours, 0);
     const withIncidents = filteredTasks.filter(t => t.hasIncident);
 
+    // Helper to format hours with max 1 decimal
+    const formatHours = (hours: number) => {
+      return Number.isInteger(hours) ? hours : Number(hours.toFixed(1));
+    };
+
     return {
       total: filteredTasks.length,
       completed: completed.length,
       pending: pending.length,
-      totalHours,
-      completedHours,
-      remainingHours: totalHours - completedHours,
+      totalHours: formatHours(totalHours),
+      completedHours: formatHours(completedHours),
+      remainingHours: formatHours(totalHours - completedHours),
       progress: filteredTasks.length > 0 ? (completed.length / filteredTasks.length) * 100 : 0,
       incidents: withIncidents.length,
     };
