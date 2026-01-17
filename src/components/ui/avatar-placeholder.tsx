@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils';
+import { useState } from 'react';
 
 interface AvatarPlaceholderProps {
   name: string;
@@ -27,12 +28,46 @@ function getColorFromName(name: string) {
   return colorPalette[charCode % colorPalette.length];
 }
 
+/**
+ * Validates a photo URL for security:
+ * - Must be a valid URL
+ * - Must use HTTPS protocol (or relative path)
+ * - Rejects data: URIs to prevent malicious content
+ */
+function isValidPhotoUrl(url: string): boolean {
+  // Allow relative paths
+  if (url.startsWith('/')) {
+    return true;
+  }
+  
+  try {
+    const parsed = new URL(url);
+    
+    // Only allow HTTPS URLs for security
+    if (parsed.protocol !== 'https:') {
+      return false;
+    }
+    
+    // Block data URIs to prevent malicious content
+    if (url.startsWith('data:')) {
+      return false;
+    }
+    
+    return true;
+  } catch {
+    // Invalid URL format
+    return false;
+  }
+}
+
 export function AvatarPlaceholder({ 
   name, 
   photoUrl, 
   size = 'md',
   className 
 }: AvatarPlaceholderProps) {
+  const [imageError, setImageError] = useState(false);
+  
   const initials = name
     .split(' ')
     .map(n => n[0])
@@ -40,7 +75,10 @@ export function AvatarPlaceholder({
     .join('')
     .toUpperCase();
 
-  if (photoUrl) {
+  // Only render img if URL is valid and hasn't errored
+  const shouldShowImage = photoUrl && isValidPhotoUrl(photoUrl) && !imageError;
+
+  if (shouldShowImage) {
     return (
       <img
         src={photoUrl}
@@ -50,6 +88,7 @@ export function AvatarPlaceholder({
           sizeClasses[size],
           className
         )}
+        onError={() => setImageError(true)}
       />
     );
   }
