@@ -43,9 +43,54 @@ serve(async (req) => {
 
     const { description } = await req.json();
 
-    if (!description || description.trim().length === 0) {
+    // Input validation
+    if (!description || typeof description !== 'string') {
       return new Response(
         JSON.stringify({ error: "Descrição é obrigatória" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const trimmedDescription = description.trim();
+
+    if (trimmedDescription.length === 0) {
+      return new Response(
+        JSON.stringify({ error: "Descrição é obrigatória" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Minimum length validation
+    if (trimmedDescription.length < 10) {
+      return new Response(
+        JSON.stringify({ error: "Descrição muito curta (mínimo 10 caracteres)" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Maximum length validation to prevent resource exhaustion
+    if (trimmedDescription.length > 5000) {
+      return new Response(
+        JSON.stringify({ error: "Descrição muito longa (máximo 5000 caracteres)" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Prompt injection protection - reject suspicious patterns
+    const suspiciousPatterns = [
+      /ignore\s+(all\s+)?previous\s+instructions/i,
+      /disregard\s+(all\s+)?(previous\s+)?instructions/i,
+      /you\s+are\s+now/i,
+      /system\s*prompt/i,
+      /forget\s+(all\s+)?instructions/i,
+      /new\s+instructions/i,
+      /override\s+instructions/i,
+    ];
+
+    if (suspiciousPatterns.some(pattern => pattern.test(trimmedDescription))) {
+      console.warn("Prompt injection attempt detected for user:", userId);
+      return new Response(
+        JSON.stringify({ error: "Conteúdo da descrição inválido" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -84,7 +129,7 @@ Diretrizes:
           { role: "system", content: systemPrompt },
           { 
             role: "user", 
-            content: `Resuma a descrição abaixo explicando claramente a finalidade da tarefa e o que será feito ou alterado, em linguagem objetiva e profissional:\n\n${description}` 
+            content: `Resuma a descrição abaixo explicando claramente a finalidade da tarefa e o que será feito ou alterado, em linguagem objetiva e profissional:\n\n${trimmedDescription}` 
           }
         ],
       }),

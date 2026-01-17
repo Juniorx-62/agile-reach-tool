@@ -187,7 +187,59 @@ serve(async (req) => {
 
     const { spreadsheetData, registeredMembers } = await req.json();
     
-    console.log("Processing spreadsheet for user:", userId);
+    // === INPUT VALIDATION ===
+    
+    // Validate spreadsheetData exists and is an object
+    if (!spreadsheetData || typeof spreadsheetData !== 'object') {
+      return new Response(
+        JSON.stringify({ error: 'Dados da planilha são obrigatórios' }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Validate spreadsheet size (max 10000 rows total)
+    let totalRows = 0;
+    for (const [sheetName, sheet] of Object.entries(spreadsheetData as Record<string, any>)) {
+      if (Array.isArray(sheet)) {
+        totalRows += sheet.length;
+      }
+    }
+    
+    if (totalRows > 10000) {
+      return new Response(
+        JSON.stringify({ error: 'Planilha muito grande (máximo 10000 linhas)' }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Validate registeredMembers structure
+    if (registeredMembers !== undefined && registeredMembers !== null) {
+      if (!Array.isArray(registeredMembers)) {
+        return new Response(
+          JSON.stringify({ error: 'registeredMembers deve ser um array' }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      if (registeredMembers.length > 1000) {
+        return new Response(
+          JSON.stringify({ error: 'Número de membros excede o limite (máximo 1000)' }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Validate each member has required fields
+      for (const member of registeredMembers) {
+        if (!member || typeof member !== 'object' || !member.name || typeof member.name !== 'string') {
+          return new Response(
+            JSON.stringify({ error: 'Estrutura de membros inválida - cada membro deve ter um nome' }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      }
+    }
+
+    console.log("Processing spreadsheet for user:", userId, { totalRows, memberCount: registeredMembers?.length || 0 });
     
     // Normalize registered member names for comparison
     const memberFirstNames = new Set(
