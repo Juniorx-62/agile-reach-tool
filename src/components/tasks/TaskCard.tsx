@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import { formatHoursDisplay } from '@/lib/formatters';
 
 interface TaskCardProps {
   task: Task;
@@ -150,7 +151,7 @@ export function TaskCard({ task, onClick, onEdit, onDelete }: TaskCardProps) {
       <div className="flex items-center justify-between mt-4 pt-3 border-t border-border">
         <div className="flex items-center gap-2">
           <Clock className="w-4 h-4 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">{task.estimatedHours}h</span>
+          <span className="text-sm text-muted-foreground">{formatHoursDisplay(task.estimatedHours)}</span>
         </div>
 
         <div className="flex items-center">

@@ -1,4 +1,5 @@
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { formatHours } from '@/lib/formatters';
 
 interface HoursChartProps {
   data: Array<{
@@ -9,15 +10,11 @@ interface HoursChartProps {
 }
 
 export function HoursChart({ data }: HoursChartProps) {
-  // Sanitize data to prevent invalid values
+  // Sanitize data using centralized formatter
   const sanitizedData = data.map(item => ({
     name: item.name,
-    estimated: isFinite(item.estimated) && item.estimated >= 0 && item.estimated < 100000 
-      ? Number(item.estimated.toFixed(1)) 
-      : 0,
-    completed: isFinite(item.completed) && item.completed >= 0 && item.completed < 100000 
-      ? Number(item.completed.toFixed(1)) 
-      : 0,
+    estimated: formatHours(item.estimated),
+    completed: formatHours(item.completed),
   }));
 
   const maxValue = Math.max(
