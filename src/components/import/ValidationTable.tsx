@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ParsedTask, ValidationError } from '@/hooks/useSpreadsheetParser';
 import { cn } from '@/lib/utils';
+import { formatHours } from '@/lib/formatters';
 
 interface ValidationTableProps {
   tasks: ParsedTask[];
@@ -243,7 +244,7 @@ export function ValidationTable({
                         )}
                       </div>
                     </TableCell>
-                    {renderCell(task, 'estimativa', task.estimativa > 0 ? `${Number(task.estimativa).toFixed(1)}h` : '-', 'Estimativa')}
+                    {renderCell(task, 'estimativa', task.estimativa > 0 ? `${formatHours(task.estimativa)}h` : '-', 'Estimativa')}
                     <TableCell className="text-xs">
                       <Badge variant={task.intercorrencia ? 'destructive' : 'secondary'} className="text-[10px]">
                         {task.intercorrencia ? 'Sim' : 'Não'}

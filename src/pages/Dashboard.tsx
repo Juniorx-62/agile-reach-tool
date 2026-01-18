@@ -18,6 +18,7 @@ import { TaskFormModal } from '@/components/modals/TaskFormModal';
 import { MemberDetailModal } from '@/components/team/MemberDetailModal';
 import { useApp, DATA_CHANGED_EVENT } from '@/contexts/AppContext';
 import { Task, TeamMember } from '@/types';
+import { formatHours } from '@/lib/formatters';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -51,21 +52,9 @@ export default function Dashboard() {
   const stats = useMemo(() => {
     const completed = filteredTasks.filter(t => t.isDelivered);
     const pending = filteredTasks.filter(t => !t.isDelivered);
-    const totalHours = filteredTasks.reduce((sum, t) => {
-      const hours = Number(t.estimatedHours) || 0;
-      return sum + (isFinite(hours) && hours >= 0 && hours < 100000 ? hours : 0);
-    }, 0);
-    const completedHours = completed.reduce((sum, t) => {
-      const hours = Number(t.estimatedHours) || 0;
-      return sum + (isFinite(hours) && hours >= 0 && hours < 100000 ? hours : 0);
-    }, 0);
+    const totalHours = filteredTasks.reduce((sum, t) => sum + formatHours(t.estimatedHours), 0);
+    const completedHours = completed.reduce((sum, t) => sum + formatHours(t.estimatedHours), 0);
     const withIncidents = filteredTasks.filter(t => t.hasIncident);
-
-    // Helper to format hours with max 1 decimal
-    const formatHours = (hours: number) => {
-      if (!isFinite(hours) || hours < 0 || hours >= 100000) return 0;
-      return Number.isInteger(hours) ? hours : Number(hours.toFixed(1));
-    };
 
     return {
       total: filteredTasks.length,
@@ -118,22 +107,16 @@ export default function Dashboard() {
   }, [filteredTasks, members]);
 
   const hoursOverTime = useMemo(() => {
-    // Helper to safely get hours
-    const safeHours = (hours: number) => {
-      const val = Number(hours) || 0;
-      return isFinite(val) && val >= 0 && val < 100000 ? val : 0;
-    };
-
     // Calculate hours based on actual sprint data
     const sprintData = sprints.slice(0, 4).map(sprint => {
       const sprintTasks = filteredTasks.filter(t => t.sprintId === sprint.id);
-      const estimated = sprintTasks.reduce((sum, t) => sum + safeHours(t.estimatedHours), 0);
-      const completed = sprintTasks.filter(t => t.isDelivered).reduce((sum, t) => sum + safeHours(t.estimatedHours), 0);
+      const estimated = sprintTasks.reduce((sum, t) => sum + formatHours(t.estimatedHours), 0);
+      const completed = sprintTasks.filter(t => t.isDelivered).reduce((sum, t) => sum + formatHours(t.estimatedHours), 0);
       return {
         name: sprint.name.replace('Sprint ', 'S'),
         sprintId: sprint.id,
-        estimated: Number(estimated.toFixed(1)),
-        completed: Number(completed.toFixed(1)),
+        estimated: formatHours(estimated),
+        completed: formatHours(completed),
       };
     });
 

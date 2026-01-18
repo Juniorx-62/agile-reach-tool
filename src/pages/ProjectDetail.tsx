@@ -10,6 +10,7 @@ import { TaskCard } from '@/components/tasks/TaskCard';
 import { TaskDetailModal } from '@/components/tasks/TaskDetailModal';
 import { TaskFormModal } from '@/components/modals/TaskFormModal';
 import { SprintFormModal } from '@/components/modals/SprintFormModal';
+import { ConfirmationModal } from '@/components/modals/ConfirmationModal';
 import { useApp } from '@/contexts/AppContext';
 import { Task, Sprint } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -21,6 +22,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { toast } from '@/hooks/use-toast';
+import { formatHours } from '@/lib/formatters';
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
@@ -40,20 +42,8 @@ export default function ProjectDetail() {
 
   const stats = useMemo(() => {
     const completed = projectTasks.filter(t => t.isDelivered);
-    const totalHours = projectTasks.reduce((sum, t) => {
-      const hours = Number(t.estimatedHours) || 0;
-      return sum + (isFinite(hours) && hours >= 0 && hours < 100000 ? hours : 0);
-    }, 0);
-    const completedHours = completed.reduce((sum, t) => {
-      const hours = Number(t.estimatedHours) || 0;
-      return sum + (isFinite(hours) && hours >= 0 && hours < 100000 ? hours : 0);
-    }, 0);
-
-    // Helper to format hours with max 1 decimal
-    const formatHours = (hours: number) => {
-      if (!isFinite(hours) || hours < 0 || hours >= 100000) return 0;
-      return Number.isInteger(hours) ? hours : Number(hours.toFixed(1));
-    };
+    const totalHours = projectTasks.reduce((sum, t) => sum + formatHours(t.estimatedHours), 0);
+    const completedHours = completed.reduce((sum, t) => sum + formatHours(t.estimatedHours), 0);
 
     return {
       total: projectTasks.length,

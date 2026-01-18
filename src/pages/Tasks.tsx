@@ -1,10 +1,11 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Plus, Search, Edit, Trash2 } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { TaskCard } from '@/components/tasks/TaskCard';
 import { TaskDetailModal } from '@/components/tasks/TaskDetailModal';
 import { TaskFormModal } from '@/components/modals/TaskFormModal';
+import { ConfirmationModal } from '@/components/modals/ConfirmationModal';
 import { useApp } from '@/contexts/AppContext';
 import { Task, TaskType, TaskCategory } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -28,6 +29,8 @@ export default function Tasks() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<FilterStatus>('all');
   const [memberFilter, setMemberFilter] = useState<string>('all');
@@ -168,12 +171,16 @@ export default function Tasks() {
     { label: 'Pendentes', value: 'pending' },
   ];
 
-  const handleDeleteTask = (task: Task) => {
-    if (confirm(`Tem certeza que deseja excluir a tarefa "${task.title}"?`)) {
-      deleteTask(task.id);
-      toast({ title: 'Sucesso', description: 'Tarefa excluída com sucesso!' });
-    }
-  };
+  const handleDeleteTask = useCallback(async () => {
+    if (!taskToDelete) return;
+    
+    setIsDeleting(true);
+    await new Promise(resolve => setTimeout(resolve, 300));
+    deleteTask(taskToDelete.id);
+    setIsDeleting(false);
+    setTaskToDelete(null);
+    toast({ title: 'Sucesso', description: 'Tarefa excluída com sucesso!' });
+  }, [taskToDelete, deleteTask]);
 
   const handleEditTask = (task: Task) => {
     setEditingTask(task);
@@ -336,7 +343,7 @@ export default function Tasks() {
               task={task}
               onClick={() => setSelectedTask(task)}
               onEdit={() => handleEditTask(task)}
-              onDelete={() => handleDeleteTask(task)}
+              onDelete={() => setTaskToDelete(task)}
             />
           ))}
         </div>
@@ -379,6 +386,18 @@ export default function Tasks() {
         }}
         defaultProjectId={selectedProjectId || undefined}
         defaultSprintId={selectedSprintId || undefined}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        open={!!taskToDelete}
+        onClose={() => setTaskToDelete(null)}
+        onConfirm={handleDeleteTask}
+        title="Excluir tarefa"
+        description={`Tem certeza que deseja excluir a tarefa "${taskToDelete?.title}"? Esta ação não pode ser desfeita.`}
+        confirmText="Excluir"
+        variant="destructive"
+        isLoading={isDeleting}
       />
     </>
   );
