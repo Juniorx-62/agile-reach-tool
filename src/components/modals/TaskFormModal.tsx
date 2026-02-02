@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useApp } from '@/contexts/AppContext';
-import { Task, TaskType, TaskCategory, TaskPriority } from '@/types';
+import { Task, TaskType, TaskCategory, TaskPriority, TaskStatus, TASK_STATUS_LABELS } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import { Loader2, Sparkles } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -19,6 +19,7 @@ interface TaskFormModalProps {
   onClose: () => void;
   defaultProjectId?: string;
   defaultSprintId?: string;
+  defaultStatus?: TaskStatus;
 }
 
 // P0 = Critical (highest), P5 = Lowest
@@ -31,7 +32,7 @@ const priorityOptions: { value: TaskPriority; label: string }[] = [
   { value: 5, label: 'P5 - Muito Baixa' },
 ];
 
-export function TaskFormModal({ task, open, onClose, defaultProjectId, defaultSprintId }: TaskFormModalProps) {
+export function TaskFormModal({ task, open, onClose, defaultProjectId, defaultSprintId, defaultStatus }: TaskFormModalProps) {
   const { addTask, updateTask, projects, sprints, members } = useApp();
   const { summarize, isLoading: isSummarizing } = useSummarizeTask();
   const [loading, setLoading] = useState(false);
@@ -45,6 +46,7 @@ export function TaskFormModal({ task, open, onClose, defaultProjectId, defaultSp
     summary: '',
     type: 'frontend' as TaskType,
     category: 'feature' as TaskCategory,
+    status: 'backlog' as TaskStatus,
     assignees: [] as string[],
     estimatedHours: 0,
     hasIncident: false,
@@ -67,6 +69,7 @@ export function TaskFormModal({ task, open, onClose, defaultProjectId, defaultSp
         summary: (task as any).summary || '',
         type: task.type,
         category: task.category,
+        status: task.status || 'backlog',
         assignees: task.assignees,
         estimatedHours: task.estimatedHours,
         hasIncident: task.hasIncident,
@@ -83,6 +86,7 @@ export function TaskFormModal({ task, open, onClose, defaultProjectId, defaultSp
         summary: '',
         type: 'frontend',
         category: 'feature',
+        status: defaultStatus || 'backlog',
         assignees: [],
         estimatedHours: 0,
         hasIncident: false,
@@ -280,7 +284,7 @@ export function TaskFormModal({ task, open, onClose, defaultProjectId, defaultSp
               </div>
             )}
 
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Tipo</Label>
                 <Select 
@@ -314,12 +318,39 @@ export function TaskFormModal({ task, open, onClose, defaultProjectId, defaultSp
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select 
+                  value={formData.status} 
+                  onValueChange={(value: TaskStatus) => {
+                    const isDelivered = value === 'done';
+                    setFormData(prev => ({ 
+                      ...prev, 
+                      status: value,
+                      isDelivered,
+                    }));
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(TASK_STATUS_LABELS).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>{label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
               <div className="space-y-2">
                 <Label>Estimativa (horas)</Label>
                 <Input
                   type="number"
                   min={0}
+                  step="0.5"
                   value={formData.estimatedHours}
                   onChange={(e) => setFormData(prev => ({ ...prev, estimatedHours: Number(e.target.value) }))}
                 />

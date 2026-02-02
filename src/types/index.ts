@@ -20,6 +20,17 @@ export interface Sprint {
 export type TaskType = 'frontend' | 'backend' | 'fullstack';
 export type TaskCategory = 'refinement' | 'feature' | 'bug';
 export type TaskPriority = 0 | 1 | 2 | 3 | 4 | 5;
+export type TaskStatus = 'backlog' | 'todo' | 'in_progress' | 'in_review' | 'done';
+
+export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
+  backlog: 'Backlog',
+  todo: 'A Fazer',
+  in_progress: 'Em Progresso',
+  in_review: 'Em Revisão',
+  done: 'Concluído',
+};
+
+export const TASK_STATUS_ORDER: TaskStatus[] = ['backlog', 'todo', 'in_progress', 'in_review', 'done'];
 
 export interface Task {
   id: string;
@@ -31,6 +42,7 @@ export interface Task {
   description?: string;
   type: TaskType;
   category: TaskCategory;
+  status: TaskStatus;
   assignees: string[];
   estimatedHours: number;
   hasIncident: boolean;

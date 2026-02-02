@@ -1,13 +1,14 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Plus, Search, Edit, Trash2 } from 'lucide-react';
+import { Plus, Search, LayoutGrid, List } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { TaskCard } from '@/components/tasks/TaskCard';
 import { TaskDetailModal } from '@/components/tasks/TaskDetailModal';
 import { TaskFormModal } from '@/components/modals/TaskFormModal';
 import { ConfirmationModal } from '@/components/modals/ConfirmationModal';
+import { KanbanBoard } from '@/components/kanban';
 import { useApp } from '@/contexts/AppContext';
-import { Task, TaskType, TaskCategory } from '@/types';
+import { Task, TaskType, TaskCategory, TaskStatus } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
@@ -17,11 +18,13 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 
 type FilterStatus = 'all' | 'completed' | 'pending';
 type SortOrder = 'newest' | 'oldest' | 'priority';
+type ViewMode = 'list' | 'kanban';
 
 export default function Tasks() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -29,6 +32,7 @@ export default function Tasks() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [defaultStatus, setDefaultStatus] = useState<TaskStatus>('backlog');
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [search, setSearch] = useState('');
@@ -39,6 +43,9 @@ export default function Tasks() {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [incidentFilter, setIncidentFilter] = useState<string>('all');
   const [sortOrder, setSortOrder] = useState<SortOrder>('newest');
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    return (searchParams.get('view') as ViewMode) || 'list';
+  });
 
   // Initialize filters from URL params
   useEffect(() => {
@@ -48,6 +55,7 @@ export default function Tasks() {
     const priority = searchParams.get('priority');
     const member = searchParams.get('member');
     const hasIncident = searchParams.get('hasIncident');
+    const view = searchParams.get('view');
 
     if (type) setTypeFilter(type);
     if (category) setCategoryFilter(category);
@@ -55,17 +63,25 @@ export default function Tasks() {
     if (priority) setPriorityFilter(priority);
     if (member) setMemberFilter(member);
     if (hasIncident) setIncidentFilter(hasIncident);
+    if (view === 'kanban' || view === 'list') setViewMode(view);
   }, [searchParams]);
 
   // Update URL when filters change
-  const updateUrlParams = (key: string, value: string) => {
+  const updateUrlParams = useCallback((key: string, value: string) => {
     const newParams = new URLSearchParams(searchParams);
-    if (value === 'all') {
+    if (value === 'all' || value === '') {
       newParams.delete(key);
     } else {
       newParams.set(key, value);
     }
-    setSearchParams(newParams);
+    setSearchParams(newParams, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  const handleViewModeChange = (value: string) => {
+    if (value === 'list' || value === 'kanban') {
+      setViewMode(value);
+      updateUrlParams('view', value);
+    }
   };
 
   const handleTypeFilter = (value: string) => {
@@ -186,6 +202,11 @@ export default function Tasks() {
     setEditingTask(task);
   };
 
+  const handleCreateTaskFromKanban = (status: TaskStatus) => {
+    setDefaultStatus(status);
+    setShowCreateModal(true);
+  };
+
   const clearAllFilters = () => {
     setSearch('');
     setStatusFilter('all');
@@ -195,7 +216,11 @@ export default function Tasks() {
     setCategoryFilter('all');
     setIncidentFilter('all');
     setSortOrder('newest');
-    setSearchParams({});
+    const newParams = new URLSearchParams();
+    if (viewMode !== 'list') {
+      newParams.set('view', viewMode);
+    }
+    setSearchParams(newParams, { replace: true });
   };
 
   const hasActiveFilters = statusFilter !== 'all' || memberFilter !== 'all' || priorityFilter !== 'all' || typeFilter !== 'all' || categoryFilter !== 'all' || incidentFilter !== 'all';
@@ -209,26 +234,40 @@ export default function Tasks() {
       
       <div className="p-6 space-y-6 animate-fade-in">
         {/* Actions Bar */}
-        <div className="flex items-center justify-between">
-          <Button 
-            onClick={() => setShowCreateModal(true)}
-            className="gradient-primary text-white"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Nova Tarefa
-          </Button>
-
-          {hasActiveFilters && (
-            <Button variant="ghost" size="sm" onClick={clearAllFilters}>
-              Limpar filtros
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div className="flex items-center gap-3">
+            <Button 
+              onClick={() => {
+                setDefaultStatus('backlog');
+                setShowCreateModal(true);
+              }}
+              className="gradient-primary text-white"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Nova Tarefa
             </Button>
-          )}
+
+            {hasActiveFilters && (
+              <Button variant="ghost" size="sm" onClick={clearAllFilters}>
+                Limpar filtros
+              </Button>
+            )}
+          </div>
+
+          <ToggleGroup type="single" value={viewMode} onValueChange={handleViewModeChange}>
+            <ToggleGroupItem value="list" aria-label="Visualizar lista">
+              <List className="h-4 w-4" />
+            </ToggleGroupItem>
+            <ToggleGroupItem value="kanban" aria-label="Visualizar kanban">
+              <LayoutGrid className="h-4 w-4" />
+            </ToggleGroupItem>
+          </ToggleGroup>
         </div>
 
         {/* Filters Bar */}
-        <div className="flex flex-wrap items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3 overflow-x-auto pb-2">
           {/* Search */}
-          <div className="relative flex-1 min-w-[240px] max-w-sm">
+          <div className="relative flex-shrink-0 min-w-[200px] max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input 
               placeholder="Buscar por título ou demanda..." 
@@ -238,25 +277,27 @@ export default function Tasks() {
             />
           </div>
 
-          {/* Status Filter Chips */}
-          <div className="flex items-center gap-2">
-            {statusFilters.map((filter) => (
-              <button
-                key={filter.value}
-                onClick={() => handleStatusFilter(filter.value)}
-                className={cn(
-                  'filter-chip',
-                  statusFilter === filter.value && 'filter-chip-active'
-                )}
-              >
-                {filter.label}
-              </button>
-            ))}
-          </div>
+          {/* Status Filter Chips - Only show in list view */}
+          {viewMode === 'list' && (
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {statusFilters.map((filter) => (
+                <button
+                  key={filter.value}
+                  onClick={() => handleStatusFilter(filter.value)}
+                  className={cn(
+                    'filter-chip',
+                    statusFilter === filter.value && 'filter-chip-active'
+                  )}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Type Filter */}
           <Select value={typeFilter} onValueChange={handleTypeFilter}>
-            <SelectTrigger className="w-[150px] bg-card">
+            <SelectTrigger className="w-[130px] bg-card flex-shrink-0">
               <SelectValue placeholder="Tipo" />
             </SelectTrigger>
             <SelectContent>
@@ -269,7 +310,7 @@ export default function Tasks() {
 
           {/* Category Filter */}
           <Select value={categoryFilter} onValueChange={handleCategoryFilter}>
-            <SelectTrigger className="w-[160px] bg-card">
+            <SelectTrigger className="w-[140px] bg-card flex-shrink-0">
               <SelectValue placeholder="Categoria" />
             </SelectTrigger>
             <SelectContent>
@@ -282,7 +323,7 @@ export default function Tasks() {
 
           {/* Member Filter */}
           <Select value={memberFilter} onValueChange={handleMemberFilter}>
-            <SelectTrigger className="w-[180px] bg-card">
+            <SelectTrigger className="w-[160px] bg-card flex-shrink-0">
               <SelectValue placeholder="Responsável" />
             </SelectTrigger>
             <SelectContent>
@@ -297,7 +338,7 @@ export default function Tasks() {
 
           {/* Priority Filter - P0 is highest */}
           <Select value={priorityFilter} onValueChange={handlePriorityFilter}>
-            <SelectTrigger className="w-[140px] bg-card">
+            <SelectTrigger className="w-[130px] bg-card flex-shrink-0">
               <SelectValue placeholder="Prioridade" />
             </SelectTrigger>
             <SelectContent>
@@ -313,7 +354,7 @@ export default function Tasks() {
 
           {/* Incident Filter */}
           <Select value={incidentFilter} onValueChange={handleIncidentFilter}>
-            <SelectTrigger className={cn("w-[150px] bg-card", incidentFilter === 'true' && "border-warning text-warning")}>
+            <SelectTrigger className={cn("w-[140px] bg-card flex-shrink-0", incidentFilter === 'true' && "border-warning text-warning")}>
               <SelectValue placeholder="Intercorrência" />
             </SelectTrigger>
             <SelectContent>
@@ -322,44 +363,59 @@ export default function Tasks() {
             </SelectContent>
           </Select>
 
-          {/* Sort */}
-          <Select value={sortOrder} onValueChange={(v) => setSortOrder(v as SortOrder)}>
-            <SelectTrigger className="w-[160px] bg-card">
-              <SelectValue placeholder="Ordenar" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="newest">Mais recentes</SelectItem>
-              <SelectItem value="oldest">Mais antigas</SelectItem>
-              <SelectItem value="priority">Por prioridade</SelectItem>
-            </SelectContent>
-          </Select>
+          {/* Sort - Only show in list view */}
+          {viewMode === 'list' && (
+            <Select value={sortOrder} onValueChange={(v) => setSortOrder(v as SortOrder)}>
+              <SelectTrigger className="w-[140px] bg-card flex-shrink-0">
+                <SelectValue placeholder="Ordenar" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="newest">Mais recentes</SelectItem>
+                <SelectItem value="oldest">Mais antigas</SelectItem>
+                <SelectItem value="priority">Por prioridade</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
         </div>
 
-        {/* Tasks Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filteredTasks.map((task) => (
-            <TaskCard 
-              key={task.id} 
-              task={task}
-              onClick={() => setSelectedTask(task)}
-              onEdit={() => handleEditTask(task)}
-              onDelete={() => setTaskToDelete(task)}
-            />
-          ))}
-        </div>
+        {/* View Content */}
+        {viewMode === 'kanban' ? (
+          <KanbanBoard
+            tasks={filteredTasks}
+            onTaskClick={setSelectedTask}
+            onTaskEdit={handleEditTask}
+            onTaskDelete={setTaskToDelete}
+            onCreateTask={handleCreateTaskFromKanban}
+          />
+        ) : (
+          <>
+            {/* Tasks Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {filteredTasks.map((task) => (
+                <TaskCard 
+                  key={task.id} 
+                  task={task}
+                  onClick={() => setSelectedTask(task)}
+                  onEdit={() => handleEditTask(task)}
+                  onDelete={() => setTaskToDelete(task)}
+                />
+              ))}
+            </div>
 
-        {filteredTasks.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-lg text-muted-foreground">Nenhuma tarefa encontrada</p>
-            <p className="text-sm text-muted-foreground mt-1">Tente ajustar os filtros ou crie uma nova tarefa</p>
-            <Button 
-              onClick={() => setShowCreateModal(true)}
-              className="mt-4 gradient-primary text-white"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Criar Primeira Tarefa
-            </Button>
-          </div>
+            {filteredTasks.length === 0 && (
+              <div className="text-center py-12">
+                <p className="text-lg text-muted-foreground">Nenhuma tarefa encontrada</p>
+                <p className="text-sm text-muted-foreground mt-1">Tente ajustar os filtros ou crie uma nova tarefa</p>
+                <Button 
+                  onClick={() => setShowCreateModal(true)}
+                  className="mt-4 gradient-primary text-white"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Criar Primeira Tarefa
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -386,6 +442,7 @@ export default function Tasks() {
         }}
         defaultProjectId={selectedProjectId || undefined}
         defaultSprintId={selectedSprintId || undefined}
+        defaultStatus={defaultStatus}
       />
 
       {/* Delete Confirmation Modal */}
