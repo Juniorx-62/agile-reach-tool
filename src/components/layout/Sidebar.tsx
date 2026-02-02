@@ -10,18 +10,19 @@ import {
   Download, 
   Settings,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  LayoutGrid,
+  Bell
 } from 'lucide-react';
 import logo from '@/assets/logo.png';
 import { cn } from '@/lib/utils';
 import { useApp } from '@/contexts/AppContext';
 
-import { Bell } from 'lucide-react';
-
 const mainNavItems = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/' },
   { icon: FolderKanban, label: 'Projetos', href: '/projects' },
   { icon: ListTodo, label: 'Tarefas', href: '/tasks' },
+  { icon: LayoutGrid, label: 'Kanban', href: '/tasks?view=kanban' },
   { icon: Users, label: 'Equipe', href: '/team' },
   { icon: Calendar, label: 'Linha do Tempo', href: '/timeline' },
   { icon: Bell, label: 'Notificações', href: '/notifications' },
@@ -51,7 +52,16 @@ export function Sidebar() {
       <nav className="flex-1 px-3 py-4 overflow-y-auto scrollbar-thin">
         <div className="space-y-1">
           {mainNavItems.map((item) => {
-            const isActive = location.pathname === item.href;
+            let isActive = false;
+            
+            if (item.href === '/tasks?view=kanban') {
+              isActive = location.pathname === '/tasks' && location.search.includes('view=kanban');
+            } else if (item.href === '/tasks') {
+              isActive = location.pathname === '/tasks' && !location.search.includes('view=kanban');
+            } else {
+              isActive = location.pathname === item.href;
+            }
+            
             return (
               <Link
                 key={item.href}

@@ -211,6 +211,7 @@ export default function Import() {
             description: '',
             type: task.tipo,
             category: task.categoria,
+            status: task.entregue ? 'done' as const : 'backlog' as const,
             assignees: assigneeIds,
             estimatedHours: task.estimativa,
             hasIncident: task.intercorrencia,
