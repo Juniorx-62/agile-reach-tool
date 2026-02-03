@@ -1,9 +1,9 @@
-import { useState } from 'react';
 import { Search } from 'lucide-react';
 import { useApp } from '@/contexts/AppContext';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { NotificationPanel } from '@/components/notifications/NotificationPanel';
+import { ThemeToggle } from './ThemeToggle';
 
 interface HeaderProps {
   title: string;
@@ -61,6 +61,7 @@ export function Header({ title, subtitle, onTaskClick }: HeaderProps) {
             <Input placeholder="Buscar..." className="pl-9 w-[200px] bg-card" />
           </div>
 
+          <ThemeToggle />
           <NotificationPanel onTaskClick={onTaskClick} />
         </div>
       </div>

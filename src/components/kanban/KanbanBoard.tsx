@@ -16,7 +16,7 @@ import { Task, TaskStatus, TASK_STATUS_LABELS, TASK_STATUS_ORDER } from '@/types
 import { KanbanColumn } from './KanbanColumn';
 import { KanbanCard } from './KanbanCard';
 import { useApp } from '@/contexts/AppContext';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+
 
 interface KanbanBoardProps {
   tasks: Task[];
@@ -132,8 +132,8 @@ export function KanbanBoard({
       onDragEnd={handleDragEnd}
       onDragOver={handleDragOver}
     >
-      <ScrollArea className="w-full">
-        <div className="flex gap-4 pb-4 min-w-max">
+      <div className="w-full overflow-x-auto scrollbar-hidden">
+        <div className="flex gap-4 pb-4 min-w-max px-1">
           {TASK_STATUS_ORDER.map(status => (
             <KanbanColumn
               key={status}
@@ -147,8 +147,7 @@ export function KanbanBoard({
             />
           ))}
         </div>
-        <ScrollBar orientation="horizontal" />
-      </ScrollArea>
+      </div>
 
       <DragOverlay>
         {activeTask && (
