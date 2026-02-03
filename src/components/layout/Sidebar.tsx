@@ -11,10 +11,9 @@ import {
   Settings,
   ChevronDown,
   ChevronRight,
-  LayoutGrid,
   Bell
 } from 'lucide-react';
-import logo from '@/assets/logo.png';
+import logoLight from '@/assets/logo-light.png';
 import { cn } from '@/lib/utils';
 import { useApp } from '@/contexts/AppContext';
 
@@ -22,7 +21,6 @@ const mainNavItems = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/' },
   { icon: FolderKanban, label: 'Projetos', href: '/projects' },
   { icon: ListTodo, label: 'Tarefas', href: '/tasks' },
-  { icon: LayoutGrid, label: 'Kanban', href: '/tasks?view=kanban' },
   { icon: Users, label: 'Equipe', href: '/team' },
   { icon: Calendar, label: 'Linha do Tempo', href: '/timeline' },
   { icon: Bell, label: 'Notificações', href: '/notifications' },
@@ -45,22 +43,16 @@ export function Sidebar() {
     <aside className="fixed left-0 top-0 h-screen w-64 bg-sidebar text-sidebar-foreground flex flex-col shadow-sidebar z-50">
       {/* Logo */}
       <div className="flex items-center gap-3 px-5 py-6 border-b border-sidebar-border">
-        <img src={logo} alt="Logo" className="h-10 w-auto" />
+        <img src={logoLight} alt="4Selet" className="h-8 w-auto" />
       </div>
 
       {/* Main Navigation */}
       <nav className="flex-1 px-3 py-4 overflow-y-auto scrollbar-thin">
         <div className="space-y-1">
           {mainNavItems.map((item) => {
-            let isActive = false;
-            
-            if (item.href === '/tasks?view=kanban') {
-              isActive = location.pathname === '/tasks' && location.search.includes('view=kanban');
-            } else if (item.href === '/tasks') {
-              isActive = location.pathname === '/tasks' && !location.search.includes('view=kanban');
-            } else {
-              isActive = location.pathname === item.href;
-            }
+            const isActive = item.href === '/tasks' 
+              ? location.pathname === '/tasks'
+              : location.pathname === item.href;
             
             return (
               <Link
@@ -137,7 +129,7 @@ export function Sidebar() {
       {/* Footer */}
       <div className="px-4 py-4 border-t border-sidebar-border">
         <p className="text-xs text-sidebar-muted text-center">
-          v1.0.0 • SprintFlow
+          v1.0.0 • 4Selet
         </p>
       </div>
     </aside>
