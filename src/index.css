@@ -77,42 +77,67 @@
   }
 
   .dark {
-    --background: 222 47% 8%;
+    /* Dark mode - Refined palette with better contrast */
+    --background: 222 47% 7%;
     --foreground: 210 40% 98%;
 
-    --card: 222 47% 11%;
+    --card: 222 47% 10%;
     --card-foreground: 210 40% 98%;
 
-    --popover: 222 47% 11%;
+    --popover: 222 47% 10%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 217 91% 60%;
-    --primary-foreground: 222 47% 11%;
+    /* Primary - Brighter blue for dark mode */
+    --primary: 217 91% 65%;
+    --primary-foreground: 222 47% 8%;
 
-    --secondary: 222 47% 18%;
+    /* Secondary */
+    --secondary: 222 47% 16%;
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 222 47% 18%;
-    --muted-foreground: 215 20% 65%;
+    /* Muted - Better contrast for labels */
+    --muted: 222 47% 15%;
+    --muted-foreground: 215 20% 75%;
 
-    --accent: 199 89% 48%;
-    --accent-foreground: 0 0% 100%;
+    /* Accent */
+    --accent: 199 89% 55%;
+    --accent-foreground: 222 47% 8%;
 
-    --destructive: 0 62% 30%;
+    /* Status colors - Brighter for dark mode */
+    --success: 142 71% 50%;
+    --success-foreground: 222 47% 8%;
+    
+    --warning: 38 92% 55%;
+    --warning-foreground: 222 47% 8%;
+    
+    --destructive: 0 84% 65%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 222 47% 18%;
-    --input: 222 47% 18%;
-    --ring: 217 91% 60%;
+    --info: 199 89% 55%;
+    --info-foreground: 222 47% 8%;
 
-    --sidebar-background: 222 47% 6%;
+    --border: 222 47% 18%;
+    --input: 222 47% 15%;
+    --ring: 217 91% 65%;
+
+    /* Sidebar dark mode */
+    --sidebar-background: 222 47% 5%;
     --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary: 217 91% 65%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 222 47% 12%;
     --sidebar-accent-foreground: 210 40% 98%;
     --sidebar-border: 222 47% 12%;
-    --sidebar-ring: 217 91% 60%;
+    --sidebar-ring: 217 91% 65%;
+    --sidebar-muted: 215 20% 65%;
+
+    /* Chart colors - Brighter for dark mode */
+    --chart-1: 217 91% 65%;
+    --chart-2: 142 71% 55%;
+    --chart-3: 38 92% 60%;
+    --chart-4: 199 89% 60%;
+    --chart-5: 280 65% 70%;
+    --chart-6: 0 84% 65%;
   }
 }
 
