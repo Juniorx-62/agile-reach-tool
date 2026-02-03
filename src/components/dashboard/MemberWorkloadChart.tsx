@@ -73,15 +73,18 @@ export function MemberWorkloadChart({ data, onMemberClick }: MemberWorkloadChart
                     backgroundColor: 'hsl(var(--card))',
                     border: '1px solid hsl(var(--border))',
                     borderRadius: '8px',
-                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                    color: 'hsl(var(--card-foreground))'
                   }}
+                  labelStyle={{ color: 'hsl(var(--card-foreground))' }}
+                  itemStyle={{ color: 'hsl(var(--card-foreground))' }}
                   formatter={(value: number, name: string) => [
                     `${value} ${name === 'tasks' ? 'tarefas' : 'horas'}`,
                     name === 'tasks' ? 'Tarefas' : 'Horas'
                   ]}
                   labelFormatter={(label) => label}
                 />
-                <Bar 
+                <Bar
                   dataKey="tasks" 
                   radius={[0, 4, 4, 0]} 
                   onClick={handleClick}
