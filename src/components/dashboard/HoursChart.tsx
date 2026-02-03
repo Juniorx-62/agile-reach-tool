@@ -50,8 +50,11 @@ export function HoursChart({ data }: HoursChartProps) {
               backgroundColor: 'hsl(var(--card))',
               border: '1px solid hsl(var(--border))',
               borderRadius: '8px',
-              boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+              boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+              color: 'hsl(var(--card-foreground))'
             }}
+            labelStyle={{ color: 'hsl(var(--card-foreground))' }}
+            itemStyle={{ color: 'hsl(var(--card-foreground))' }}
             formatter={(value: number, name: string) => [
               `${Number.isInteger(value) ? value : value.toFixed(1)}h`,
               name === 'estimated' ? 'Estimado' : 'Concluído'
