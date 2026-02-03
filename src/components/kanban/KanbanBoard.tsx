@@ -16,7 +16,7 @@ import { Task, TaskStatus, TASK_STATUS_LABELS, TASK_STATUS_ORDER } from '@/types
 import { KanbanColumn } from './KanbanColumn';
 import { KanbanCard } from './KanbanCard';
 import { useApp } from '@/contexts/AppContext';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+
 
 interface KanbanBoardProps {
   tasks: Task[];
