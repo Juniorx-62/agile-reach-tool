@@ -5,7 +5,6 @@ import { Task, TaskStatus } from '@/types';
 import { KanbanCard } from './KanbanCard';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface KanbanColumnProps {
   status: TaskStatus;
@@ -50,13 +49,13 @@ export function KanbanColumn({
     <div
       ref={setNodeRef}
       className={cn(
-        'flex flex-col w-[300px] min-w-[300px] rounded-lg border-2 bg-card/50 transition-colors',
+        'flex flex-col w-[300px] min-w-[300px] rounded-lg border-2 bg-card/50 transition-colors h-fit max-h-[calc(100vh-220px)]',
         statusColors[status],
         isOver && 'border-primary ring-2 ring-primary/20'
       )}
     >
       {/* Column Header */}
-      <div className={cn('p-3 rounded-t-md', statusHeaderColors[status])}>
+      <div className={cn('p-3 rounded-t-md flex-shrink-0', statusHeaderColors[status])}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <h3 className="font-semibold text-sm text-foreground">{title}</h3>
@@ -76,7 +75,7 @@ export function KanbanColumn({
       </div>
 
       {/* Column Content */}
-      <ScrollArea className="flex-1 max-h-[calc(100vh-320px)]">
+      <div className="flex-1 overflow-y-auto scrollbar-thin">
         <SortableContext items={tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
           <div className="p-2 space-y-2 min-h-[100px]">
             {tasks.map(task => (
@@ -95,7 +94,7 @@ export function KanbanColumn({
             )}
           </div>
         </SortableContext>
-      </ScrollArea>
+      </div>
     </div>
   );
 }

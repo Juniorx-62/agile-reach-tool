@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -16,6 +16,7 @@ import { Task, TaskStatus, TASK_STATUS_LABELS, TASK_STATUS_ORDER } from '@/types
 import { KanbanColumn } from './KanbanColumn';
 import { KanbanCard } from './KanbanCard';
 import { useApp } from '@/contexts/AppContext';
+import { cn } from '@/lib/utils';
 
 
 interface KanbanBoardProps {
@@ -124,6 +125,42 @@ export function KanbanBoard({
     }
   };
 
+  // Drag-to-scroll functionality for Kanban container
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const [isDraggingScroll, setIsDraggingScroll] = React.useState(false);
+  const [startX, setStartX] = React.useState(0);
+  const [scrollLeft, setScrollLeft] = React.useState(0);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    // Only enable drag scroll if not dragging a card
+    if (activeTask) return;
+    const container = containerRef.current;
+    if (!container) return;
+    
+    setIsDraggingScroll(true);
+    setStartX(e.pageX - container.offsetLeft);
+    setScrollLeft(container.scrollLeft);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDraggingScroll || activeTask) return;
+    e.preventDefault();
+    const container = containerRef.current;
+    if (!container) return;
+    
+    const x = e.pageX - container.offsetLeft;
+    const walk = (x - startX) * 1.5;
+    container.scrollLeft = scrollLeft - walk;
+  };
+
+  const handleMouseUp = () => {
+    setIsDraggingScroll(false);
+  };
+
+  const handleMouseLeave = () => {
+    setIsDraggingScroll(false);
+  };
+
   return (
     <DndContext
       sensors={sensors}
@@ -132,7 +169,17 @@ export function KanbanBoard({
       onDragEnd={handleDragEnd}
       onDragOver={handleDragOver}
     >
-      <div className="w-full overflow-x-auto scrollbar-hidden">
+      <div 
+        ref={containerRef}
+        className={cn(
+          "w-full overflow-x-auto scrollbar-hidden select-none",
+          !activeTask && "drag-scroll"
+        )}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
+      >
         <div className="flex gap-4 pb-4 min-w-max px-1">
           {TASK_STATUS_ORDER.map(status => (
             <KanbanColumn

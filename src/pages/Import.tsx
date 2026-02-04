@@ -79,14 +79,41 @@ export default function Import() {
     });
   }, [result, editedTasks]);
 
-  // Helper to find member by first name
-  const findMemberByFirstName = useCallback((firstName: string): string | null => {
-    const normalizedSearch = firstName.toLowerCase().trim();
-    const member = members.find(m => {
-      const memberFirstName = m.name.split(' ')[0].toLowerCase();
+  // Helper to find member using smart matching
+  const findMemberSmartMatch = useCallback((searchName: string): string | null => {
+    const normalizedSearch = searchName.toLowerCase().trim()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    
+    // 1. Exact full name match
+    const exactMatch = members.find(m => 
+      m.name.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '') === normalizedSearch
+    );
+    if (exactMatch) return exactMatch.id;
+
+    // 2. Nickname exact match
+    const nicknameMatch = members.find(m => 
+      m.nickname && m.nickname.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '') === normalizedSearch
+    );
+    if (nicknameMatch) return nicknameMatch.id;
+
+    // 3. First name match
+    const firstNameMatch = members.find(m => {
+      const memberFirstName = m.name.split(' ')[0].toLowerCase().trim()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
       return memberFirstName === normalizedSearch;
     });
-    return member?.id || null;
+    if (firstNameMatch) return firstNameMatch.id;
+
+    // 4. Last name match
+    const lastNameMatch = members.find(m => {
+      const parts = m.name.split(' ');
+      const memberLastName = parts[parts.length - 1].toLowerCase().trim()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      return memberLastName === normalizedSearch;
+    });
+    if (lastNameMatch) return lastNameMatch.id;
+
+    return null;
   }, [members]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -193,10 +220,10 @@ export default function Import() {
           // Find or use existing sprint
           let sprint = sprints.find(s => s.name.toLowerCase() === task.sprint.toLowerCase());
           
-          // Find members by first name
+          // Find members using smart matching (name, nickname, first/last name)
           const assigneeIds: string[] = [];
-          task.responsaveis.forEach(firstName => {
-            const memberId = findMemberByFirstName(firstName);
+          task.responsaveis.forEach(responsavel => {
+            const memberId = findMemberSmartMatch(responsavel);
             if (memberId) {
               assigneeIds.push(memberId);
             }

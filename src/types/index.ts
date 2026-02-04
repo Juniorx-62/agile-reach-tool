@@ -54,6 +54,7 @@ export interface Task {
 export interface TeamMember {
   id: string;
   name: string;
+  nickname?: string;
   photoUrl?: string;
   phone?: string;
   email: string;

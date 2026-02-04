@@ -270,4 +270,18 @@
   .scrollbar-hidden::-webkit-scrollbar {
     display: none;  /* Chrome, Safari and Opera */
   }
+
+  /* Drag scroll cursor */
+  .drag-scroll {
+    cursor: grab;
+  }
+  
+  .drag-scroll:active {
+    cursor: grabbing;
+  }
+
+  /* Focus ring fix - prevent clipping */
+  .focus-ring-inset {
+    @apply focus-visible:ring-inset;
+  }
 }

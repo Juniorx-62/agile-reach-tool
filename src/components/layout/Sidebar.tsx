@@ -14,7 +14,7 @@ import {
   ChevronLeft,
   Bell
 } from 'lucide-react';
-import logoLight from '@/assets/logo-light.png';
+import logo from '@/assets/logo.png';
 import logoIcon from '@/assets/logo-icon.png';
 import { cn } from '@/lib/utils';
 import { useApp } from '@/contexts/AppContext';
@@ -111,7 +111,7 @@ export function Sidebar({ onCollapsedChange }: SidebarProps) {
           {isCollapsed ? (
             <img src={logoIcon} alt="4Selet" className="h-8 w-8 object-contain" />
           ) : (
-            <img src={logoLight} alt="4Selet" className="h-8 w-auto" />
+            <img src={logo} alt="4Selet" className="h-8 w-auto" />
           )}
         </div>
 
@@ -119,10 +119,10 @@ export function Sidebar({ onCollapsedChange }: SidebarProps) {
         <button
           onClick={toggleCollapse}
           className={cn(
-            "absolute -right-3 top-20 z-50 flex h-6 w-6 items-center justify-center rounded-full",
-            "bg-sidebar-accent border border-sidebar-border text-sidebar-foreground",
-            "hover:bg-sidebar-primary hover:text-sidebar-primary-foreground transition-colors",
-            "shadow-md"
+            "absolute -right-3 top-20 z-50 flex h-7 w-7 items-center justify-center rounded-full",
+            "bg-card border-2 border-border text-foreground",
+            "hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all",
+            "shadow-lg focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
           )}
           aria-label={isCollapsed ? "Expandir menu" : "Minimizar menu"}
         >

@@ -157,9 +157,46 @@ export function ValidationTable({
     );
   };
 
+  // Drag scroll for horizontal scrolling
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = React.useState(false);
+  const [startX, setStartX] = React.useState(0);
+  const [scrollLeft, setScrollLeft] = React.useState(0);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    const container = containerRef.current;
+    if (!container) return;
+    setIsDragging(true);
+    setStartX(e.pageX - container.offsetLeft);
+    setScrollLeft(container.scrollLeft);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return;
+    e.preventDefault();
+    const container = containerRef.current;
+    if (!container) return;
+    const x = e.pageX - container.offsetLeft;
+    const walk = (x - startX) * 1.5;
+    container.scrollLeft = scrollLeft - walk;
+  };
+
+  const handleMouseUp = () => setIsDragging(false);
+  const handleMouseLeave = () => setIsDragging(false);
+
   return (
     <div className="border rounded-lg overflow-hidden">
-      <div className="overflow-x-auto">
+      <div 
+        ref={containerRef}
+        className={cn(
+          "overflow-x-auto scrollbar-hidden select-none",
+          !isDragging && "drag-scroll"
+        )}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
+      >
         <div className="max-h-[400px] overflow-y-auto">
           <Table className="min-w-[1200px]">
             <TableHeader className="sticky top-0 bg-background z-10">
