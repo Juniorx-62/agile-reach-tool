@@ -40,6 +40,12 @@ export function MemberCard({ member, onClick }: MemberCardProps) {
             {member.name}
           </h4>
           
+          {member.nickname && (
+            <p className="text-xs text-muted-foreground">
+              Apelido: {member.nickname}
+            </p>
+          )}
+          
           <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
             <Mail className="w-3.5 h-3.5" />
             <span className="truncate">{member.email}</span>

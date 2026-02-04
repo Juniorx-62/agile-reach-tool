@@ -21,6 +21,7 @@ export function MemberFormModal({ member, open, onClose, defaultName }: MemberFo
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
+    nickname: '',
     email: '',
     phone: '',
     photoUrl: '',
@@ -30,6 +31,7 @@ export function MemberFormModal({ member, open, onClose, defaultName }: MemberFo
     if (member) {
       setFormData({
         name: member.name,
+        nickname: member.nickname || '',
         email: member.email,
         // Format phone when loading for editing
         phone: formatPhoneNumber(member.phone || ''),
@@ -38,6 +40,7 @@ export function MemberFormModal({ member, open, onClose, defaultName }: MemberFo
     } else {
       setFormData({
         name: defaultName || '',
+        nickname: '',
         email: '',
         phone: '',
         photoUrl: '',
@@ -82,6 +85,7 @@ export function MemberFormModal({ member, open, onClose, defaultName }: MemberFo
     // Save only the numeric digits to the database
     const dataToSave = {
       ...formData,
+      nickname: formData.nickname.trim() || undefined,
       phone: extractNumbers(formData.phone),
     };
 
@@ -132,6 +136,18 @@ export function MemberFormModal({ member, open, onClose, defaultName }: MemberFo
               onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
               placeholder="Nome completo"
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Apelido (opcional)</Label>
+            <Input
+              value={formData.nickname}
+              onChange={(e) => setFormData(prev => ({ ...prev, nickname: e.target.value }))}
+              placeholder="Ex: Joao, Lili..."
+            />
+            <p className="text-xs text-muted-foreground">
+              Usado para identificar o membro na importação de planilhas
+            </p>
           </div>
 
           <div className="space-y-2">
