@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ArrowLeft, Calendar, Plus, Edit, Trash2, MoreVertical } from 'lucide-react';
+import { ArrowLeft, Calendar, Plus, Edit, Trash2, MoreVertical, CheckSquare, Clock, Target } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { ProgressRing } from '@/components/dashboard/ProgressRing';
@@ -10,11 +10,10 @@ import { TaskCard } from '@/components/tasks/TaskCard';
 import { TaskDetailModal } from '@/components/tasks/TaskDetailModal';
 import { TaskFormModal } from '@/components/modals/TaskFormModal';
 import { SprintFormModal } from '@/components/modals/SprintFormModal';
-import { ConfirmationModal } from '@/components/modals/ConfirmationModal';
+import { SprintNavigation } from '@/components/sprints/SprintNavigation';
 import { useApp } from '@/contexts/AppContext';
 import { Task, Sprint } from '@/types';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   DropdownMenu,
   DropdownMenuContent,
