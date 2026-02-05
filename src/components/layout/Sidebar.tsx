@@ -109,9 +109,9 @@ export function Sidebar({ onCollapsedChange }: SidebarProps) {
           isCollapsed ? "justify-center px-2 py-4" : "gap-3 px-5 py-6"
         )}>
           {isCollapsed ? (
-            <img src={logoIcon} alt="4Selet" className="h-8 w-8 object-contain" />
+            <img src={logoIcon} alt="4Selet" className="h-8 w-8 object-contain transition-all duration-300" />
           ) : (
-            <img src={logo} alt="4Selet" className="h-8 w-auto" />
+            <img src={logoFull} alt="4Selet" className="h-10 w-auto transition-all duration-300" />
           )}
         </div>
 
