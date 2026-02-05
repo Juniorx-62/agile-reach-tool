@@ -14,7 +14,7 @@ import {
   ChevronLeft,
   Bell
 } from 'lucide-react';
-import logo from '@/assets/logo.png';
+import logoFull from '@/assets/logo-full.png';
 import logoIcon from '@/assets/logo-icon.png';
 import { cn } from '@/lib/utils';
 import { useApp } from '@/contexts/AppContext';
