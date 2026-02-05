@@ -98,7 +98,18 @@ function parseType(value: any): 'frontend' | 'backend' | 'fullstack' {
   
   const strValue = String(value).toLowerCase().trim();
   
-  if (strValue.includes('full') || strValue.includes('stack')) {
+  // Handle "backend/frontend", "backend + frontend", "backend e frontend" → fullstack
+  if (
+    strValue.includes('full') || 
+    strValue.includes('stack') ||
+    (strValue.includes('back') && strValue.includes('front')) ||
+    strValue.includes('backend/frontend') ||
+    strValue.includes('frontend/backend') ||
+    strValue.includes('backend + frontend') ||
+    strValue.includes('frontend + backend') ||
+    strValue.includes('backend e frontend') ||
+    strValue.includes('frontend e backend')
+  ) {
     return 'fullstack';
   } else if (strValue.includes('back')) {
     return 'backend';

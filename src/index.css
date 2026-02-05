@@ -238,9 +238,10 @@
     background: var(--gradient-primary);
   }
 
+  /* Custom scrollbar - subtle and minimal */
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: hsl(var(--muted)) transparent;
+    scrollbar-color: transparent transparent;
   }
 
   .scrollbar-thin::-webkit-scrollbar {
@@ -253,12 +254,17 @@
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background: hsl(var(--muted));
+    background: transparent;
     border-radius: 3px;
+    transition: background 0.2s ease;
+  }
+
+  .scrollbar-thin:hover::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.3);
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--muted-foreground));
+    background: hsl(var(--muted-foreground) / 0.5);
   }
 
   /* Hidden scrollbar - keep scroll functionality */
@@ -283,5 +289,36 @@
   /* Focus ring fix - prevent clipping */
   .focus-ring-inset {
     @apply focus-visible:ring-inset;
+  }
+
+  /* Fade animation for alerts rotation */
+  @keyframes fadeSlideIn {
+    from {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes fadeSlideOut {
+    from {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+  }
+
+  .alert-enter {
+    animation: fadeSlideIn 0.35s ease-out forwards;
+  }
+
+  .alert-exit {
+    animation: fadeSlideOut 0.35s ease-out forwards;
   }
 }

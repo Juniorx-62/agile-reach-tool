@@ -14,7 +14,7 @@ import {
   ChevronLeft,
   Bell
 } from 'lucide-react';
-import logo from '@/assets/logo.png';
+import logoFull from '@/assets/logo-full.png';
 import logoIcon from '@/assets/logo-icon.png';
 import { cn } from '@/lib/utils';
 import { useApp } from '@/contexts/AppContext';
@@ -109,9 +109,9 @@ export function Sidebar({ onCollapsedChange }: SidebarProps) {
           isCollapsed ? "justify-center px-2 py-4" : "gap-3 px-5 py-6"
         )}>
           {isCollapsed ? (
-            <img src={logoIcon} alt="4Selet" className="h-8 w-8 object-contain" />
+            <img src={logoIcon} alt="4Selet" className="h-8 w-8 object-contain transition-all duration-300" />
           ) : (
-            <img src={logo} alt="4Selet" className="h-8 w-auto" />
+            <img src={logoFull} alt="4Selet" className="h-10 w-auto transition-all duration-300" />
           )}
         </div>
 

@@ -1,6 +1,16 @@
 import { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
-import { TrendingUp, TrendingDown } from 'lucide-react';
+import { 
+  TrendingUp, 
+  TrendingDown, 
+  CheckSquare, 
+  Clock, 
+  Users, 
+  AlertTriangle,
+  Target,
+  BarChart3,
+  type LucideIcon
+} from 'lucide-react';
 
 interface StatCardProps {
   title: string;
@@ -94,3 +104,13 @@ export function StatCard({
     </div>
   );
 }
+
+// Export icon mapping for consistent usage
+export const StatIcons = {
+  tasks: CheckSquare,
+  clock: Clock,
+  users: Users,
+  alert: AlertTriangle,
+  target: Target,
+  chart: BarChart3,
+} as const;

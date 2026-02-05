@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ArrowLeft, Calendar, Plus, Edit, Trash2, MoreVertical } from 'lucide-react';
+import { ArrowLeft, Calendar, Plus, Edit, Trash2, MoreVertical, CheckSquare, Clock, Target } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { ProgressRing } from '@/components/dashboard/ProgressRing';
@@ -10,11 +10,10 @@ import { TaskCard } from '@/components/tasks/TaskCard';
 import { TaskDetailModal } from '@/components/tasks/TaskDetailModal';
 import { TaskFormModal } from '@/components/modals/TaskFormModal';
 import { SprintFormModal } from '@/components/modals/SprintFormModal';
-import { ConfirmationModal } from '@/components/modals/ConfirmationModal';
+import { SprintNavigation } from '@/components/sprints/SprintNavigation';
 import { useApp } from '@/contexts/AppContext';
 import { Task, Sprint } from '@/types';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -107,24 +106,24 @@ export default function ProjectDetail() {
             <StatCard
               title="Total de Tarefas"
               value={stats.total}
-              icon={<span className="text-2xl">📋</span>}
+              icon={<CheckSquare className="w-5 h-5 text-primary" />}
             />
             <StatCard
               title="Horas Estimadas"
               value={`${stats.totalHours}h`}
-              icon={<span className="text-2xl">⏱️</span>}
+              icon={<Clock className="w-5 h-5 text-info" />}
               subtitle={`${stats.completedHours}h realizadas`}
             />
             <StatCard
               title="Taxa de Conclusão"
               value={`${Math.round(stats.progress)}%`}
-              icon={<span className="text-2xl">🎯</span>}
+              icon={<Target className="w-5 h-5 text-success" />}
               variant={stats.progress > 75 ? 'success' : 'default'}
             />
           </div>
         </div>
 
-        {/* Sprints Tabs */}
+        {/* Sprints Section */}
         <div>
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold">Sprints</h3>
@@ -149,38 +148,34 @@ export default function ProjectDetail() {
           </div>
 
           {projectSprints.length > 0 ? (
-            <Tabs value={currentSprintId} onValueChange={setActiveSprintId}>
-              <div className="overflow-x-auto pb-2 -mx-1 px-1">
-                <TabsList className="bg-muted/50 p-1 inline-flex min-w-max">
-                  {projectSprints.map((sprint) => (
-                    <TabsTrigger 
-                      key={sprint.id} 
-                      value={sprint.id}
-                      className="data-[state=active]:bg-card whitespace-nowrap"
-                    >
-                      {sprint.name}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-              </div>
+            <>
+              {/* Sprint Navigation with Arrows */}
+              <SprintNavigation 
+                sprints={projectSprints}
+                activeSprintId={currentSprintId || null}
+                onSprintSelect={setActiveSprintId}
+              />
 
+              {/* Active Sprint Content */}
               {projectSprints.map((sprint) => {
+                if (sprint.id !== currentSprintId) return null;
+                
                 const sprintTasks = projectTasks.filter(t => t.sprintId === sprint.id);
                 const completedTasks = sprintTasks.filter(t => t.isDelivered);
                 
                 return (
-                  <TabsContent key={sprint.id} value={sprint.id} className="mt-4">
+                  <div key={sprint.id} className="mt-4 animate-fade-in">
                     {/* Sprint Info */}
                     <div className="stat-card mb-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
+                      <div className="flex items-center justify-between flex-wrap gap-3">
+                        <div className="flex items-center gap-4 flex-wrap">
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <Calendar className="w-4 h-4" />
                             <span>
                               {format(new Date(sprint.startDate), "dd MMM", { locale: ptBR })} - {format(new Date(sprint.endDate), "dd MMM yyyy", { locale: ptBR })}
                             </span>
                           </div>
-                          <div className="h-4 w-px bg-border" />
+                          <div className="h-4 w-px bg-border hidden sm:block" />
                           <span className="text-sm">
                             <span className="font-medium text-success">{completedTasks.length}</span>
                             <span className="text-muted-foreground"> / {sprintTasks.length} tarefas</span>
@@ -239,10 +234,10 @@ export default function ProjectDetail() {
                         </div>
                       )}
                     </div>
-                  </TabsContent>
+                  </div>
                 );
               })}
-            </Tabs>
+            </>
           ) : (
             <div className="text-center py-8 stat-card">
               <p className="text-muted-foreground">Nenhuma sprint cadastrada</p>
