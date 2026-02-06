@@ -30,7 +30,7 @@ import {
 interface InternalKanbanBoardProps {
   tasks: Task[];
   onTaskClick?: (task: Task) => void;
-  onTaskUpdate: (id: string, updates: Partial<Task>) => Promise<void>;
+  onTaskUpdate: (id: string, updates: Partial<Task>) => Promise<Task>;
   onCreateTask?: (status: TaskStatus) => void;
 }
 
