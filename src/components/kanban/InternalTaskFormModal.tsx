@@ -258,14 +258,14 @@ export function InternalTaskFormModal({
                 Sprint
               </Label>
               <Select
-                value={formData.sprint_id}
-                onValueChange={(v) => setFormData({ ...formData, sprint_id: v })}
+                value={formData.sprint_id || '_none'}
+                onValueChange={(v) => setFormData({ ...formData, sprint_id: v === '_none' ? '' : v })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione uma sprint" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Nenhuma</SelectItem>
+                  <SelectItem value="_none">Nenhuma</SelectItem>
                   {sprints.map((sprint) => (
                     <SelectItem key={sprint.id} value={sprint.id}>
                       {sprint.name}
