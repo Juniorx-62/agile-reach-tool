@@ -9,9 +9,11 @@ import {
   useSensors,
   DragStartEvent,
   DragEndEvent,
+  DragOverEvent,
 } from '@dnd-kit/core';
-import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
-import { useDroppable, useDraggable } from '@dnd-kit/core';
+import { sortableKeyboardCoordinates, SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { useDroppable } from '@dnd-kit/core';
 import { 
   TicketStatus, 
   TICKET_STATUS_LABELS, 
@@ -23,7 +25,13 @@ import {
 import { Header } from '@/components/layout/Header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Plus, Clock, AlertTriangle } from 'lucide-react';
+import { Plus, Clock, AlertTriangle, MoreVertical, Edit, Trash2, Eye } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -31,23 +39,64 @@ import { useTickets } from '@/hooks/useTickets';
 import { TicketDetailModal } from '@/components/tickets/TicketDetailModal';
 import { useNavigate } from 'react-router-dom';
 
-function TicketCard({ ticket, isDragging, onClick }: { ticket: Ticket; isDragging?: boolean; onClick?: () => void }) {
-  const { attributes, listeners, setNodeRef, transform } = useDraggable({
+// Status colors for column borders and headers
+const statusColors: Record<TicketStatus, string> = {
+  aberto: 'border-info/50',
+  em_andamento: 'border-primary/50',
+  aguardando_cliente: 'border-warning/50',
+  em_revisao: 'border-accent/50',
+  concluido: 'border-success/50',
+  cancelado: 'border-muted-foreground/30',
+};
+
+const statusHeaderColors: Record<TicketStatus, string> = {
+  aberto: 'bg-info/10',
+  em_andamento: 'bg-primary/10',
+  aguardando_cliente: 'bg-warning/10',
+  em_revisao: 'bg-accent/10',
+  concluido: 'bg-success/10',
+  cancelado: 'bg-muted/50',
+};
+
+// Priority colors
+const priorityColors: Record<string, string> = {
+  critica: 'bg-destructive/15 text-destructive',
+  alta: 'bg-warning/15 text-warning',
+  media: 'bg-info/15 text-info',
+  baixa: 'bg-success/15 text-success',
+};
+
+// Type colors
+const typeColors: Record<string, string> = {
+  bug: 'bg-destructive/15 text-destructive',
+  melhoria: 'bg-info/15 text-info',
+  nova_funcionalidade: 'bg-success/15 text-success',
+  suporte: 'bg-muted text-muted-foreground',
+};
+
+interface TicketCardProps {
+  ticket: Ticket;
+  isDragging?: boolean;
+  onClick?: () => void;
+  canDrag?: boolean;
+}
+
+function TicketCard({ ticket, isDragging, onClick, canDrag = true }: TicketCardProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging: isSortableDragging,
+  } = useSortable({ 
     id: ticket.id,
+    disabled: !canDrag,
   });
 
-  const style = transform ? {
-    transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-  } : undefined;
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'critica': return 'bg-red-500/10 text-red-500 border-red-500/20';
-      case 'alta': return 'bg-orange-500/10 text-orange-500 border-orange-500/20';
-      case 'media': return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
-      case 'baixa': return 'bg-green-500/10 text-green-500 border-green-500/20';
-      default: return 'bg-muted text-muted-foreground';
-    }
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
   };
 
   const isOverdue = ticket.sla_deadline && new Date(ticket.sla_deadline) < new Date();
@@ -56,48 +105,66 @@ function TicketCard({ ticket, isDragging, onClick }: { ticket: Ticket; isDraggin
     <div
       ref={setNodeRef}
       style={style}
-      {...listeners}
-      {...attributes}
-      onClick={onClick}
+      {...(canDrag ? { ...attributes, ...listeners } : {})}
+      onClick={(e) => {
+        if (!isSortableDragging && onClick) {
+          onClick();
+        }
+      }}
       className={cn(
-        "p-4 rounded-lg border bg-card hover:shadow-md transition-all cursor-grab active:cursor-grabbing",
-        isDragging && "opacity-50 shadow-lg",
-        isOverdue && "border-destructive/50"
+        'bg-card rounded-lg border border-border p-3 group relative shadow-sm hover:shadow-md transition-all touch-manipulation',
+        canDrag && 'cursor-grab active:cursor-grabbing',
+        !canDrag && 'cursor-pointer',
+        (isDragging || isSortableDragging) && 'opacity-50 shadow-lg ring-2 ring-primary rotate-2',
+        isOverdue && 'border-destructive/50'
       )}
     >
-      <div className="space-y-3">
-        <div className="flex items-start justify-between gap-2">
-          <Badge variant="outline" className={getPriorityColor(ticket.priority)}>
-            {TICKET_PRIORITY_LABELS[ticket.priority]}
-          </Badge>
-          <Badge variant="secondary" className="text-xs">
-            {TICKET_TYPE_LABELS[ticket.ticket_type]}
-          </Badge>
-        </div>
-
-        <h4 className="font-medium text-sm line-clamp-2">{ticket.title}</h4>
-
-        {ticket.description && (
-          <p className="text-xs text-muted-foreground line-clamp-2">
-            {ticket.description}
-          </p>
+      {/* Badges Row */}
+      <div className="flex items-center gap-1 flex-wrap mb-2">
+        <span className={cn('text-[10px] px-1.5 py-0.5 rounded font-medium', priorityColors[ticket.priority])}>
+          {TICKET_PRIORITY_LABELS[ticket.priority]}
+        </span>
+        <span className={cn('text-[10px] px-1.5 py-0.5 rounded font-medium', typeColors[ticket.ticket_type])}>
+          {TICKET_TYPE_LABELS[ticket.ticket_type]}
+        </span>
+        {isOverdue && (
+          <AlertTriangle className="w-3.5 h-3.5 text-destructive" />
         )}
+      </div>
 
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <Clock className="h-3 w-3" />
-            <span>{new Date(ticket.created_at).toLocaleDateString('pt-BR')}</span>
-          </div>
-          {isOverdue && (
-            <div className="flex items-center gap-1 text-destructive">
-              <AlertTriangle className="h-3 w-3" />
-              <span>Atrasado</span>
-            </div>
-          )}
+      {/* Title */}
+      <h4 className="font-medium text-sm text-foreground line-clamp-2 mb-1">
+        {ticket.title}
+      </h4>
+
+      {/* Description */}
+      {ticket.description && (
+        <p className="text-[11px] text-muted-foreground line-clamp-2 mb-2">
+          {ticket.description}
+        </p>
+      )}
+
+      {/* Footer */}
+      <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+        <div className="flex items-center gap-1">
+          <Clock className="w-3 h-3" />
+          <span>{new Date(ticket.created_at).toLocaleDateString('pt-BR')}</span>
         </div>
+        {isOverdue && (
+          <span className="text-destructive font-medium">Atrasado</span>
+        )}
       </div>
     </div>
   );
+}
+
+interface TicketColumnProps {
+  status: TicketStatus;
+  title: string;
+  tickets: Ticket[];
+  onCreateTicket?: () => void;
+  onTicketClick?: (ticket: Ticket) => void;
+  canDrag?: boolean;
 }
 
 function TicketColumn({ 
@@ -106,65 +173,62 @@ function TicketColumn({
   tickets, 
   onCreateTicket,
   onTicketClick,
-}: { 
-  status: TicketStatus;
-  title: string;
-  tickets: Ticket[];
-  onCreateTicket?: () => void;
-  onTicketClick?: (ticket: Ticket) => void;
-}) {
+  canDrag = true,
+}: TicketColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: status,
   });
-
-  const getColumnColor = () => {
-    switch (status) {
-      case 'aberto': return 'border-t-blue-500';
-      case 'em_andamento': return 'border-t-purple-500';
-      case 'aguardando_cliente': return 'border-t-yellow-500';
-      case 'em_revisao': return 'border-t-orange-500';
-      case 'concluido': return 'border-t-green-500';
-      case 'cancelado': return 'border-t-muted-foreground';
-      default: return '';
-    }
-  };
 
   return (
     <div
       ref={setNodeRef}
       className={cn(
-        "flex flex-col w-72 min-w-72 rounded-lg border border-t-4 bg-muted/30",
-        getColumnColor(),
-        isOver && "bg-muted/50"
+        'flex flex-col w-[300px] min-w-[300px] rounded-lg border-2 bg-card/50 transition-colors h-fit max-h-[calc(100vh-220px)]',
+        statusColors[status],
+        isOver && 'border-primary ring-2 ring-primary/20'
       )}
     >
-      <div className="flex items-center justify-between p-3 border-b">
-        <div className="flex items-center gap-2">
-          <h3 className="font-semibold text-sm">{title}</h3>
-          <Badge variant="secondary" className="text-xs">
-            {tickets.length}
-          </Badge>
+      {/* Column Header */}
+      <div className={cn('p-3 rounded-t-md flex-shrink-0', statusHeaderColors[status])}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <h3 className="font-semibold text-sm text-foreground">{title}</h3>
+            <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-background/80 text-muted-foreground">
+              {tickets.length}
+            </span>
+          </div>
+          {status === 'aberto' && onCreateTicket && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={onCreateTicket}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          )}
         </div>
-        {status === 'aberto' && onCreateTicket && (
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onCreateTicket}>
-            <Plus className="h-4 w-4" />
-          </Button>
-        )}
       </div>
 
-      <div className="flex-1 p-2 space-y-2 overflow-y-auto max-h-[calc(100vh-280px)]">
-        {tickets.map((ticket) => (
-          <TicketCard 
-            key={ticket.id} 
-            ticket={ticket} 
-            onClick={() => onTicketClick?.(ticket)}
-          />
-        ))}
-        {tickets.length === 0 && (
-          <p className="text-center text-sm text-muted-foreground py-4">
-            Nenhum ticket
-          </p>
-        )}
+      {/* Column Content */}
+      <div className="flex-1 overflow-y-auto scrollbar-thin">
+        <SortableContext items={tickets.map(t => t.id)} strategy={verticalListSortingStrategy}>
+          <div className="p-2 space-y-2 min-h-[100px]">
+            {tickets.map((ticket) => (
+              <TicketCard 
+                key={ticket.id} 
+                ticket={ticket} 
+                onClick={() => onTicketClick?.(ticket)}
+                canDrag={canDrag}
+              />
+            ))}
+            {tickets.length === 0 && (
+              <div className="flex items-center justify-center h-20 text-sm text-muted-foreground border-2 border-dashed border-muted rounded-lg">
+                {canDrag ? 'Arraste tickets aqui' : 'Nenhum ticket'}
+              </div>
+            )}
+          </div>
+        </SortableContext>
       </div>
     </div>
   );
@@ -177,6 +241,9 @@ export default function TicketsKanban() {
   const { tickets, isLoading, updateTicket } = useTickets();
   const [activeTicket, setActiveTicket] = useState<Ticket | null>(null);
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+
+  // Disable drag for clients
+  const canDrag = authSession.role !== 'cliente';
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -199,6 +266,14 @@ export default function TicketsKanban() {
 
     tickets.forEach(ticket => {
       grouped[ticket.status].push(ticket);
+    });
+
+    // Sort by priority within each column (critica first)
+    const priorityOrder: Record<string, number> = { critica: 0, alta: 1, media: 2, baixa: 3 };
+    Object.keys(grouped).forEach(status => {
+      grouped[status as TicketStatus].sort((a, b) => {
+        return (priorityOrder[a.priority] ?? 4) - (priorityOrder[b.priority] ?? 4);
+      });
     });
 
     return grouped;
@@ -240,8 +315,67 @@ export default function TicketsKanban() {
     }
   };
 
-  // Disable drag for clients
-  const canDrag = authSession.role !== 'cliente';
+  const handleDragOver = (event: DragOverEvent) => {
+    const { active, over } = event;
+    if (!over) return;
+
+    const activeId = active.id;
+    const overId = over.id;
+
+    // Find which column the ticket is being dragged over
+    const overColumn = TICKET_STATUS_ORDER.find(status => status === overId);
+    if (overColumn) return; // Already handled by handleDragEnd
+
+    // Check if dragging over another ticket
+    const overTicket = tickets.find(t => t.id === overId);
+    if (overTicket) {
+      const draggedTicket = tickets.find(t => t.id === activeId);
+      if (draggedTicket && draggedTicket.status !== overTicket.status) {
+        updateTicket(activeId as string, {
+          status: overTicket.status,
+          resolved_at: overTicket.status === 'concluido' ? new Date() : undefined,
+        });
+      }
+    }
+  };
+
+  // Drag-to-scroll functionality for Kanban container
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const [isDraggingScroll, setIsDraggingScroll] = React.useState(false);
+  const [startX, setStartX] = React.useState(0);
+  const [scrollLeft, setScrollLeft] = React.useState(0);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (activeTicket) return;
+    const container = containerRef.current;
+    if (!container) return;
+    
+    setIsDraggingScroll(true);
+    setStartX(e.pageX - container.offsetLeft);
+    setScrollLeft(container.scrollLeft);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDraggingScroll || activeTicket) return;
+    e.preventDefault();
+    const container = containerRef.current;
+    if (!container) return;
+    
+    const x = e.pageX - container.offsetLeft;
+    const walk = (x - startX) * 1.5;
+    container.scrollLeft = scrollLeft - walk;
+  };
+
+  const handleMouseUp = () => {
+    setIsDraggingScroll(false);
+  };
+
+  const handleMouseLeave = () => {
+    setIsDraggingScroll(false);
+  };
+
+  // Filter out cancelled tickets from main view
+  const visibleStatuses = TICKET_STATUS_ORDER.filter(s => s !== 'cancelado');
 
   return (
     <div className="min-h-screen bg-background">
@@ -258,24 +392,38 @@ export default function TicketsKanban() {
             collisionDetection={closestCorners}
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
+            onDragOver={handleDragOver}
           >
-            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-thin">
-              {TICKET_STATUS_ORDER.filter(s => s !== 'cancelado').map(status => (
-                <TicketColumn
-                  key={status}
-                  status={status}
-                  title={TICKET_STATUS_LABELS[status]}
-                  tickets={ticketsByStatus[status]}
-                  onCreateTicket={status === 'aberto' ? () => navigate('/tickets/novo') : undefined}
-                  onTicketClick={(ticket) => setSelectedTicketId(ticket.id)}
-                />
-              ))}
+            <div 
+              ref={containerRef}
+              className={cn(
+                "w-full overflow-x-auto scrollbar-hidden select-none",
+                !activeTicket && "drag-scroll"
+              )}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseLeave}
+            >
+              <div className="flex gap-4 pb-4 min-w-max px-1">
+                {visibleStatuses.map(status => (
+                  <TicketColumn
+                    key={status}
+                    status={status}
+                    title={TICKET_STATUS_LABELS[status]}
+                    tickets={ticketsByStatus[status]}
+                    onCreateTicket={status === 'aberto' ? () => navigate('/tickets/novo') : undefined}
+                    onTicketClick={(ticket) => setSelectedTicketId(ticket.id)}
+                    canDrag={canDrag}
+                  />
+                ))}
+              </div>
             </div>
 
             <DragOverlay>
               {activeTicket && (
-                <div className="w-72">
-                  <TicketCard ticket={activeTicket} isDragging />
+                <div className="w-[300px]">
+                  <TicketCard ticket={activeTicket} isDragging canDrag={canDrag} />
                 </div>
               )}
             </DragOverlay>
