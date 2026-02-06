@@ -315,14 +315,14 @@ export function InternalTaskFormModal({
                 Área
               </Label>
               <Select
-                value={formData.area}
-                onValueChange={(v) => setFormData({ ...formData, area: v as TaskArea })}
+                value={formData.area || '_none'}
+                onValueChange={(v) => setFormData({ ...formData, area: v === '_none' ? '' : v as TaskArea })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione uma área" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Nenhuma</SelectItem>
+                  <SelectItem value="_none">Nenhuma</SelectItem>
                   {Object.entries(TASK_AREA_LABELS).map(([value, label]) => (
                     <SelectItem key={value} value={value}>
                       {label}
