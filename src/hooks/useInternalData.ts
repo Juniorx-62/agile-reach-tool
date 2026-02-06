@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from './use-toast';
 
 // Types for internal kanban system
@@ -37,7 +36,7 @@ export const TASK_AREA_LABELS: Record<TaskArea, string> = {
 export interface Project {
   id: string;
   name: string;
-  description?: string;
+  description?: string | null;
   color: string;
   is_active: boolean;
   created_at: string;
@@ -56,13 +55,13 @@ export interface Sprint {
 
 export interface InternalMember {
   id: string;
-  auth_id?: string;
+  auth_id?: string | null;
   name: string;
   email: string;
-  phone?: string;
-  photo_url?: string;
+  phone?: string | null;
+  photo_url?: string | null;
   role: 'admin' | 'dev';
-  task_visibility: 'all' | 'assigned';
+  task_visibility: string;
   area_filter: string;
   is_active: boolean;
   created_at: string;
@@ -72,20 +71,20 @@ export interface InternalMember {
 export interface Task {
   id: string;
   title: string;
-  description?: string;
-  project_id?: string;
-  project?: Project;
-  sprint_id?: string;
-  sprint?: Sprint;
-  assignee_id?: string;
-  assignee?: InternalMember;
+  description?: string | null;
+  project_id?: string | null;
+  project?: Project | null;
+  sprint_id?: string | null;
+  sprint?: Sprint | null;
+  assignee_id?: string | null;
+  assignee?: InternalMember | null;
   status: TaskStatus;
   priority: TaskPriority;
-  area?: TaskArea;
-  estimated_hours?: number;
-  actual_hours?: number;
-  due_date?: string;
-  completed_at?: string;
+  area?: TaskArea | null;
+  estimated_hours?: number | null;
+  actual_hours?: number | null;
+  due_date?: string | null;
+  completed_at?: string | null;
   is_delivered: boolean;
   created_at: string;
   updated_at: string;
@@ -113,11 +112,15 @@ export function useProjects() {
     setIsLoading(false);
   }, []);
 
-  const createProject = async (project: Partial<Project>) => {
+  const createProject = async (project: { name: string; description?: string; color?: string }) => {
     try {
       const { data, error } = await supabase
         .from('projects')
-        .insert(project)
+        .insert({
+          name: project.name,
+          description: project.description,
+          color: project.color || '#6366f1',
+        })
         .select()
         .single();
 
@@ -198,11 +201,15 @@ export function useSprints() {
     setIsLoading(false);
   }, []);
 
-  const createSprint = async (sprint: Partial<Sprint>) => {
+  const createSprint = async (sprint: { name: string; start_date: string; end_date: string }) => {
     try {
       const { data, error } = await supabase
         .from('sprints')
-        .insert(sprint)
+        .insert({
+          name: sprint.name,
+          start_date: sprint.start_date,
+          end_date: sprint.end_date,
+        })
         .select()
         .single();
 
@@ -264,7 +271,6 @@ export function useSprints() {
 export function useInternalMembers() {
   const [members, setMembers] = useState<InternalMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { toast } = useToast();
 
   const fetchMembers = useCallback(async () => {
     setIsLoading(true);
@@ -276,7 +282,7 @@ export function useInternalMembers() {
         .order('name');
 
       if (error) throw error;
-      setMembers(data || []);
+      setMembers((data || []) as InternalMember[]);
     } catch (error) {
       console.error('Error fetching members:', error);
     }
@@ -311,11 +317,26 @@ export function useTasks() {
       if (error) throw error;
       
       // Map the data to match our types
-      const mappedTasks = (data || []).map(task => ({
-        ...task,
+      const mappedTasks: Task[] = (data || []).map((task: Record<string, unknown>) => ({
+        id: task.id as string,
+        title: task.title as string,
+        description: task.description as string | null,
+        project_id: task.project_id as string | null,
+        project: task.project as Project | null,
+        sprint_id: task.sprint_id as string | null,
+        sprint: task.sprint as Sprint | null,
+        assignee_id: task.assignee_id as string | null,
+        assignee: task.assignee as InternalMember | null,
         status: task.status as TaskStatus,
         priority: task.priority as TaskPriority,
-        area: task.area as TaskArea | undefined,
+        area: task.area as TaskArea | null,
+        estimated_hours: task.estimated_hours as number | null,
+        actual_hours: task.actual_hours as number | null,
+        due_date: task.due_date as string | null,
+        completed_at: task.completed_at as string | null,
+        is_delivered: task.is_delivered as boolean,
+        created_at: task.created_at as string,
+        updated_at: task.updated_at as string,
       }));
       
       setTasks(mappedTasks);
@@ -351,11 +372,27 @@ export function useTasks() {
 
       if (error) throw error;
       
-      const mappedTask = {
-        ...data,
-        status: data.status as TaskStatus,
-        priority: data.priority as TaskPriority,
-        area: data.area as TaskArea | undefined,
+      const rawTask = data as Record<string, unknown>;
+      const mappedTask: Task = {
+        id: rawTask.id as string,
+        title: rawTask.title as string,
+        description: rawTask.description as string | null,
+        project_id: rawTask.project_id as string | null,
+        project: rawTask.project as Project | null,
+        sprint_id: rawTask.sprint_id as string | null,
+        sprint: rawTask.sprint as Sprint | null,
+        assignee_id: rawTask.assignee_id as string | null,
+        assignee: rawTask.assignee as InternalMember | null,
+        status: rawTask.status as TaskStatus,
+        priority: rawTask.priority as TaskPriority,
+        area: rawTask.area as TaskArea | null,
+        estimated_hours: rawTask.estimated_hours as number | null,
+        actual_hours: rawTask.actual_hours as number | null,
+        due_date: rawTask.due_date as string | null,
+        completed_at: rawTask.completed_at as string | null,
+        is_delivered: rawTask.is_delivered as boolean,
+        created_at: rawTask.created_at as string,
+        updated_at: rawTask.updated_at as string,
       };
       
       setTasks(prev => [mappedTask, ...prev]);
@@ -400,11 +437,27 @@ export function useTasks() {
 
       if (error) throw error;
       
-      const mappedTask = {
-        ...data,
-        status: data.status as TaskStatus,
-        priority: data.priority as TaskPriority,
-        area: data.area as TaskArea | undefined,
+      const rawTask = data as Record<string, unknown>;
+      const mappedTask: Task = {
+        id: rawTask.id as string,
+        title: rawTask.title as string,
+        description: rawTask.description as string | null,
+        project_id: rawTask.project_id as string | null,
+        project: rawTask.project as Project | null,
+        sprint_id: rawTask.sprint_id as string | null,
+        sprint: rawTask.sprint as Sprint | null,
+        assignee_id: rawTask.assignee_id as string | null,
+        assignee: rawTask.assignee as InternalMember | null,
+        status: rawTask.status as TaskStatus,
+        priority: rawTask.priority as TaskPriority,
+        area: rawTask.area as TaskArea | null,
+        estimated_hours: rawTask.estimated_hours as number | null,
+        actual_hours: rawTask.actual_hours as number | null,
+        due_date: rawTask.due_date as string | null,
+        completed_at: rawTask.completed_at as string | null,
+        is_delivered: rawTask.is_delivered as boolean,
+        created_at: rawTask.created_at as string,
+        updated_at: rawTask.updated_at as string,
       };
       
       setTasks(prev => prev.map(t => t.id === id ? mappedTask : t));

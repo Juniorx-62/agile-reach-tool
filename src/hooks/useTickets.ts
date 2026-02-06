@@ -7,15 +7,38 @@ import {
   TicketComment, 
   TicketTimeline, 
   TicketAttachment,
-  TicketStatus,
-  TicketPriority,
-  TicketType,
+  Partner,
+  UserPartner,
 } from '@/types/auth';
+
+// Helper to map raw ticket data to Ticket type
+function mapTicket(data: Record<string, unknown>): Ticket {
+  return {
+    id: data.id as string,
+    partner_id: data.partner_id as string,
+    partner: data.partner as Partner | undefined,
+    created_by: data.created_by as string | undefined,
+    creator: data.creator as UserPartner | undefined,
+    assignee_id: data.assignee_id as string | undefined,
+    assignee: data.assignee as UserPartner | undefined,
+    title: data.title as string,
+    description: data.description as string,
+    ticket_type: data.ticket_type as Ticket['ticket_type'],
+    priority: data.priority as Ticket['priority'],
+    status: data.status as Ticket['status'],
+    steps_to_reproduce: data.steps_to_reproduce as string | undefined,
+    expected_result: data.expected_result as string | undefined,
+    page_url: data.page_url as string | undefined,
+    sla_deadline: data.sla_deadline ? new Date(data.sla_deadline as string) : undefined,
+    resolved_at: data.resolved_at ? new Date(data.resolved_at as string) : undefined,
+    created_at: new Date(data.created_at as string),
+    updated_at: new Date(data.updated_at as string),
+  };
+}
 
 export function useTickets() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { authSession } = useAuth();
   const { toast } = useToast();
 
   const fetchTickets = useCallback(async () => {
@@ -33,13 +56,9 @@ export function useTickets() {
 
       if (error) throw error;
       
-      const mappedTickets = (data || []).map(ticket => ({
-        ...ticket,
-        created_at: new Date(ticket.created_at),
-        updated_at: new Date(ticket.updated_at),
-        sla_deadline: ticket.sla_deadline ? new Date(ticket.sla_deadline) : undefined,
-        resolved_at: ticket.resolved_at ? new Date(ticket.resolved_at) : undefined,
-      })) as Ticket[];
+      const mappedTickets = (data || []).map((ticket: unknown) => 
+        mapTicket(ticket as Record<string, unknown>)
+      );
       
       setTickets(mappedTickets);
     } catch (error) {
@@ -73,11 +92,7 @@ export function useTickets() {
 
       if (error) throw error;
       
-      const mappedTicket = {
-        ...data,
-        created_at: new Date(data.created_at),
-        updated_at: new Date(data.updated_at),
-      } as Ticket;
+      const mappedTicket = mapTicket(data as Record<string, unknown>);
       
       setTickets(prev => [mappedTicket, ...prev]);
       toast({ title: 'Ticket criado com sucesso!' });
@@ -114,13 +129,7 @@ export function useTickets() {
 
       if (error) throw error;
       
-      const mappedTicket = {
-        ...data,
-        created_at: new Date(data.created_at),
-        updated_at: new Date(data.updated_at),
-        sla_deadline: data.sla_deadline ? new Date(data.sla_deadline) : undefined,
-        resolved_at: data.resolved_at ? new Date(data.resolved_at) : undefined,
-      } as Ticket;
+      const mappedTicket = mapTicket(data as Record<string, unknown>);
       
       setTickets(prev => prev.map(t => t.id === id ? mappedTicket : t));
       return mappedTicket;
@@ -166,13 +175,7 @@ export function useTicketDetails(ticketId: string | null) {
 
       if (ticketError) throw ticketError;
       
-      setTicket({
-        ...ticketData,
-        created_at: new Date(ticketData.created_at),
-        updated_at: new Date(ticketData.updated_at),
-        sla_deadline: ticketData.sla_deadline ? new Date(ticketData.sla_deadline) : undefined,
-        resolved_at: ticketData.resolved_at ? new Date(ticketData.resolved_at) : undefined,
-      } as Ticket);
+      setTicket(mapTicket(ticketData as Record<string, unknown>));
 
       // Fetch comments
       const { data: commentsData, error: commentsError } = await supabase
@@ -187,6 +190,7 @@ export function useTicketDetails(ticketId: string | null) {
         ...c,
         created_at: new Date(c.created_at),
         updated_at: new Date(c.updated_at),
+        user_type: c.user_type as 'internal' | 'partner',
       })) as TicketComment[]);
 
       // Fetch timeline
@@ -246,6 +250,7 @@ export function useTicketDetails(ticketId: string | null) {
         ...data,
         created_at: new Date(data.created_at),
         updated_at: new Date(data.updated_at),
+        user_type: data.user_type as 'internal' | 'partner',
       } as TicketComment]);
       
       toast({ title: 'Comentário adicionado!' });
