@@ -22,7 +22,7 @@ import ActivateAccount from "./pages/ActivateAccount";
 import TicketsDashboard from "./pages/tickets/TicketsDashboard";
 import TicketsKanban from "./pages/tickets/TicketsKanban";
 import PartnersPage from "./pages/tickets/PartnersPage";
-
+import InternalUsersPage from "./pages/tickets/InternalUsersPage";
 const queryClient = new QueryClient();
 
 // Protected route wrapper
