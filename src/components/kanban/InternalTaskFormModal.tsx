@@ -284,14 +284,14 @@ export function InternalTaskFormModal({
                 Responsável
               </Label>
               <Select
-                value={formData.assignee_id}
-                onValueChange={(v) => setFormData({ ...formData, assignee_id: v })}
+                value={formData.assignee_id || '_none'}
+                onValueChange={(v) => setFormData({ ...formData, assignee_id: v === '_none' ? '' : v })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione um responsável" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Não atribuído</SelectItem>
+                  <SelectItem value="_none">Não atribuído</SelectItem>
                   {members.map((member) => (
                     <SelectItem key={member.id} value={member.id}>
                       <div className="flex items-center gap-2">
