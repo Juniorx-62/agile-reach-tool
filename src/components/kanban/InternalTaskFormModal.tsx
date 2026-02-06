@@ -229,14 +229,14 @@ export function InternalTaskFormModal({
                 Projeto
               </Label>
               <Select
-                value={formData.project_id}
-                onValueChange={(v) => setFormData({ ...formData, project_id: v })}
+                value={formData.project_id || '_none'}
+                onValueChange={(v) => setFormData({ ...formData, project_id: v === '_none' ? '' : v })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione um projeto" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Nenhum</SelectItem>
+                  <SelectItem value="_none">Nenhum</SelectItem>
                   {projects.map((project) => (
                     <SelectItem key={project.id} value={project.id}>
                       <div className="flex items-center gap-2">
