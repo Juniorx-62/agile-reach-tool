@@ -50,6 +50,36 @@ export type Database = {
         }
         Relationships: []
       }
+      projects: {
+        Row: {
+          color: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       sla_settings: {
         Row: {
           created_at: string
@@ -76,6 +106,115 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      sprints: {
+        Row: {
+          created_at: string
+          end_date: string
+          id: string
+          is_active: boolean
+          name: string
+          start_date: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          end_date: string
+          id?: string
+          is_active?: boolean
+          name: string
+          start_date: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          end_date?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          start_date?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      tasks: {
+        Row: {
+          actual_hours: number | null
+          area: Database["public"]["Enums"]["task_area"] | null
+          assignee_id: string | null
+          completed_at: string | null
+          created_at: string
+          description: string | null
+          due_date: string | null
+          estimated_hours: number | null
+          id: string
+          is_delivered: boolean
+          priority: Database["public"]["Enums"]["task_priority"]
+          project_id: string | null
+          sprint_id: string | null
+          status: Database["public"]["Enums"]["task_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          actual_hours?: number | null
+          area?: Database["public"]["Enums"]["task_area"] | null
+          assignee_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          estimated_hours?: number | null
+          id?: string
+          is_delivered?: boolean
+          priority?: Database["public"]["Enums"]["task_priority"]
+          project_id?: string | null
+          sprint_id?: string | null
+          status?: Database["public"]["Enums"]["task_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          actual_hours?: number | null
+          area?: Database["public"]["Enums"]["task_area"] | null
+          assignee_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          estimated_hours?: number | null
+          id?: string
+          is_delivered?: boolean
+          priority?: Database["public"]["Enums"]["task_priority"]
+          project_id?: string | null
+          sprint_id?: string | null
+          status?: Database["public"]["Enums"]["task_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_assignee_id_fkey"
+            columns: ["assignee_id"]
+            isOneToOne: false
+            referencedRelation: "users_internal"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_sprint_id_fkey"
+            columns: ["sprint_id"]
+            isOneToOne: false
+            referencedRelation: "sprints"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ticket_attachments: {
         Row: {
@@ -443,6 +582,15 @@ export type Database = {
     Enums: {
       internal_role: "admin" | "dev"
       partner_role: "admin" | "dev" | "cliente"
+      task_area:
+        | "frontend"
+        | "backend"
+        | "fullstack"
+        | "design"
+        | "devops"
+        | "qa"
+      task_priority: "P0" | "P1" | "P2" | "P3"
+      task_status: "backlog" | "todo" | "in_progress" | "in_review" | "done"
       ticket_priority: "critica" | "alta" | "media" | "baixa"
       ticket_status:
         | "aberto"
@@ -581,6 +729,9 @@ export const Constants = {
     Enums: {
       internal_role: ["admin", "dev"],
       partner_role: ["admin", "dev", "cliente"],
+      task_area: ["frontend", "backend", "fullstack", "design", "devops", "qa"],
+      task_priority: ["P0", "P1", "P2", "P3"],
+      task_status: ["backlog", "todo", "in_progress", "in_review", "done"],
       ticket_priority: ["critica", "alta", "media", "baixa"],
       ticket_status: [
         "aberto",

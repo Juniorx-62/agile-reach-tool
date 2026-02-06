@@ -2,15 +2,25 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Plus, Search, LayoutGrid, List } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
-import { TaskCard } from '@/components/tasks/TaskCard';
-import { TaskDetailModal } from '@/components/tasks/TaskDetailModal';
-import { TaskFormModal } from '@/components/modals/TaskFormModal';
+import { InternalKanbanBoard } from '@/components/kanban/InternalKanbanBoard';
+import { InternalTaskFormModal } from '@/components/kanban/InternalTaskFormModal';
 import { ConfirmationModal } from '@/components/modals/ConfirmationModal';
-import { KanbanBoard } from '@/components/kanban';
-import { useApp } from '@/contexts/AppContext';
-import { Task, TaskType, TaskCategory, TaskStatus } from '@/types';
+import { 
+  useTasks, 
+  useProjects, 
+  useSprints, 
+  useInternalMembers,
+  Task,
+  TaskStatus,
+  TASK_STATUS_LABELS,
+  TASK_PRIORITY_LABELS,
+  TASK_AREA_LABELS,
+} from '@/hooks/useInternalData';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Card, CardContent } from '@/components/ui/card';
 import { 
   Select, 
   SelectContent, 
@@ -20,7 +30,7 @@ import {
 } from '@/components/ui/select';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { cn } from '@/lib/utils';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
 
 type FilterStatus = 'all' | 'completed' | 'pending';
 type SortOrder = 'newest' | 'oldest' | 'priority';
@@ -28,7 +38,12 @@ type ViewMode = 'list' | 'kanban';
 
 export default function Tasks() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const { tasks, members, deleteTask, selectedProjectId, selectedSprintId } = useApp();
+  const { tasks, isLoading, createTask, updateTask, deleteTask } = useTasks();
+  const { projects } = useProjects();
+  const { sprints } = useSprints();
+  const { members } = useInternalMembers();
+  const { toast } = useToast();
+
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -39,30 +54,27 @@ export default function Tasks() {
   const [statusFilter, setStatusFilter] = useState<FilterStatus>('all');
   const [memberFilter, setMemberFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
-  const [typeFilter, setTypeFilter] = useState<string>('all');
-  const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const [incidentFilter, setIncidentFilter] = useState<string>('all');
+  const [areaFilter, setAreaFilter] = useState<string>('all');
+  const [projectFilter, setProjectFilter] = useState<string>('all');
   const [sortOrder, setSortOrder] = useState<SortOrder>('newest');
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
-    return (searchParams.get('view') as ViewMode) || 'list';
+    return (searchParams.get('view') as ViewMode) || 'kanban';
   });
 
   // Initialize filters from URL params
   useEffect(() => {
-    const type = searchParams.get('type');
-    const category = searchParams.get('category');
+    const area = searchParams.get('area');
     const status = searchParams.get('status');
     const priority = searchParams.get('priority');
     const member = searchParams.get('member');
-    const hasIncident = searchParams.get('hasIncident');
+    const project = searchParams.get('project');
     const view = searchParams.get('view');
 
-    if (type) setTypeFilter(type);
-    if (category) setCategoryFilter(category);
+    if (area) setAreaFilter(area);
     if (status) setStatusFilter(status as FilterStatus);
     if (priority) setPriorityFilter(priority);
     if (member) setMemberFilter(member);
-    if (hasIncident) setIncidentFilter(hasIncident);
+    if (project) setProjectFilter(project);
     if (view === 'kanban' || view === 'list') setViewMode(view);
   }, [searchParams]);
 
@@ -84,47 +96,12 @@ export default function Tasks() {
     }
   };
 
-  const handleTypeFilter = (value: string) => {
-    setTypeFilter(value);
-    updateUrlParams('type', value);
-  };
-
-  const handleCategoryFilter = (value: string) => {
-    setCategoryFilter(value);
-    updateUrlParams('category', value);
-  };
-
-  const handleStatusFilter = (value: FilterStatus) => {
-    setStatusFilter(value);
-    updateUrlParams('status', value);
-  };
-
-  const handlePriorityFilter = (value: string) => {
-    setPriorityFilter(value);
-    updateUrlParams('priority', value);
-  };
-
-  const handleMemberFilter = (value: string) => {
-    setMemberFilter(value);
-    updateUrlParams('member', value);
-  };
-
-  const handleIncidentFilter = (value: string) => {
-    setIncidentFilter(value);
-    updateUrlParams('hasIncident', value);
-  };
-
   const filteredTasks = useMemo(() => {
     let result = tasks;
 
     // Project filter
-    if (selectedProjectId) {
-      result = result.filter(t => t.projectId === selectedProjectId);
-    }
-
-    // Sprint filter
-    if (selectedSprintId) {
-      result = result.filter(t => t.sprintId === selectedSprintId);
+    if (projectFilter !== 'all') {
+      result = result.filter(t => t.project_id === projectFilter);
     }
 
     // Search
@@ -132,78 +109,69 @@ export default function Tasks() {
       const searchLower = search.toLowerCase();
       result = result.filter(t => 
         t.title.toLowerCase().includes(searchLower) ||
-        t.demandId.toLowerCase().includes(searchLower)
+        t.description?.toLowerCase().includes(searchLower)
       );
     }
 
     // Status filter
     if (statusFilter === 'completed') {
-      result = result.filter(t => t.isDelivered);
+      result = result.filter(t => t.is_delivered);
     } else if (statusFilter === 'pending') {
-      result = result.filter(t => !t.isDelivered);
+      result = result.filter(t => !t.is_delivered);
     }
 
     // Member filter
     if (memberFilter !== 'all') {
-      result = result.filter(t => t.assignees.includes(memberFilter));
+      result = result.filter(t => t.assignee_id === memberFilter);
     }
 
     // Priority filter
     if (priorityFilter !== 'all') {
-      result = result.filter(t => t.priority === Number(priorityFilter));
+      result = result.filter(t => t.priority === priorityFilter);
     }
 
-    // Type filter
-    if (typeFilter !== 'all') {
-      result = result.filter(t => t.type === typeFilter);
+    // Area filter
+    if (areaFilter !== 'all') {
+      result = result.filter(t => t.area === areaFilter);
     }
 
-    // Category filter
-    if (categoryFilter !== 'all') {
-      result = result.filter(t => t.category === categoryFilter);
-    }
-
-    // Incident filter
-    if (incidentFilter === 'true') {
-      result = result.filter(t => t.hasIncident);
-    }
-
-    // Sort - P0 is highest priority (critical), P5 is lowest
+    // Sort
     if (sortOrder === 'newest') {
-      result = [...result].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      result = [...result].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     } else if (sortOrder === 'oldest') {
-      result = [...result].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      result = [...result].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
     } else if (sortOrder === 'priority') {
-      // P0 = critical (first), P5 = lowest (last)
-      result = [...result].sort((a, b) => a.priority - b.priority);
+      const priorityOrder = { P0: 0, P1: 1, P2: 2, P3: 3 };
+      result = [...result].sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
     }
 
     return result;
-  }, [tasks, selectedProjectId, selectedSprintId, search, statusFilter, memberFilter, priorityFilter, typeFilter, categoryFilter, incidentFilter, sortOrder]);
-
-  const statusFilters: { label: string; value: FilterStatus }[] = [
-    { label: 'Todas', value: 'all' },
-    { label: 'Concluídas', value: 'completed' },
-    { label: 'Pendentes', value: 'pending' },
-  ];
+  }, [tasks, projectFilter, search, statusFilter, memberFilter, priorityFilter, areaFilter, sortOrder]);
 
   const handleDeleteTask = useCallback(async () => {
     if (!taskToDelete) return;
     
     setIsDeleting(true);
-    await new Promise(resolve => setTimeout(resolve, 300));
-    deleteTask(taskToDelete.id);
+    try {
+      await deleteTask(taskToDelete.id);
+    } catch (error) {
+      console.error('Error deleting task:', error);
+    }
     setIsDeleting(false);
     setTaskToDelete(null);
-    toast({ title: 'Sucesso', description: 'Tarefa excluída com sucesso!' });
   }, [taskToDelete, deleteTask]);
 
-  const handleEditTask = (task: Task) => {
-    setEditingTask(task);
+  const handleSaveTask = async (data: Partial<Task>) => {
+    if (editingTask) {
+      await updateTask(editingTask.id, data);
+    } else {
+      await createTask(data);
+    }
   };
 
   const handleCreateTaskFromKanban = (status: TaskStatus) => {
     setDefaultStatus(status);
+    setEditingTask(null);
     setShowCreateModal(true);
   };
 
@@ -212,18 +180,27 @@ export default function Tasks() {
     setStatusFilter('all');
     setMemberFilter('all');
     setPriorityFilter('all');
-    setTypeFilter('all');
-    setCategoryFilter('all');
-    setIncidentFilter('all');
+    setAreaFilter('all');
+    setProjectFilter('all');
     setSortOrder('newest');
     const newParams = new URLSearchParams();
-    if (viewMode !== 'list') {
+    if (viewMode !== 'kanban') {
       newParams.set('view', viewMode);
     }
     setSearchParams(newParams, { replace: true });
   };
 
-  const hasActiveFilters = statusFilter !== 'all' || memberFilter !== 'all' || priorityFilter !== 'all' || typeFilter !== 'all' || categoryFilter !== 'all' || incidentFilter !== 'all';
+  const hasActiveFilters = statusFilter !== 'all' || memberFilter !== 'all' || priorityFilter !== 'all' || areaFilter !== 'all' || projectFilter !== 'all';
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'P0': return 'bg-red-500/10 text-red-500 border-red-500/20';
+      case 'P1': return 'bg-orange-500/10 text-orange-500 border-orange-500/20';
+      case 'P2': return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
+      case 'P3': return 'bg-green-500/10 text-green-500 border-green-500/20';
+      default: return 'bg-muted text-muted-foreground';
+    }
+  };
 
   return (
     <>
@@ -239,6 +216,7 @@ export default function Tasks() {
             <Button 
               onClick={() => {
                 setDefaultStatus('backlog');
+                setEditingTask(null);
                 setShowCreateModal(true);
               }}
               className="gradient-primary text-white"
@@ -270,59 +248,46 @@ export default function Tasks() {
           <div className="relative flex-shrink-0 min-w-[200px] max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input 
-              placeholder="Buscar por título ou demanda..." 
+              placeholder="Buscar por título..." 
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9 bg-card"
             />
           </div>
 
-          {/* Status Filter Chips - Only show in list view */}
-          {viewMode === 'list' && (
-            <div className="flex items-center gap-2 flex-shrink-0">
-              {statusFilters.map((filter) => (
-                <button
-                  key={filter.value}
-                  onClick={() => handleStatusFilter(filter.value)}
-                  className={cn(
-                    'filter-chip',
-                    statusFilter === filter.value && 'filter-chip-active'
-                  )}
-                >
-                  {filter.label}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Type Filter */}
-          <Select value={typeFilter} onValueChange={handleTypeFilter}>
-            <SelectTrigger className="w-[130px] bg-card flex-shrink-0">
-              <SelectValue placeholder="Tipo" />
+          {/* Project Filter */}
+          <Select value={projectFilter} onValueChange={(v) => { setProjectFilter(v); updateUrlParams('project', v); }}>
+            <SelectTrigger className="w-[160px] bg-card flex-shrink-0">
+              <SelectValue placeholder="Projeto" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos os tipos</SelectItem>
-              <SelectItem value="frontend">Frontend</SelectItem>
-              <SelectItem value="backend">Backend</SelectItem>
-              <SelectItem value="fullstack">Fullstack</SelectItem>
+              <SelectItem value="all">Todos os projetos</SelectItem>
+              {projects.map((project) => (
+                <SelectItem key={project.id} value={project.id}>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: project.color }} />
+                    {project.name}
+                  </div>
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
 
-          {/* Category Filter */}
-          <Select value={categoryFilter} onValueChange={handleCategoryFilter}>
-            <SelectTrigger className="w-[140px] bg-card flex-shrink-0">
-              <SelectValue placeholder="Categoria" />
+          {/* Area Filter */}
+          <Select value={areaFilter} onValueChange={(v) => { setAreaFilter(v); updateUrlParams('area', v); }}>
+            <SelectTrigger className="w-[130px] bg-card flex-shrink-0">
+              <SelectValue placeholder="Área" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todas categorias</SelectItem>
-              <SelectItem value="bug">Bug</SelectItem>
-              <SelectItem value="feature">Feature</SelectItem>
-              <SelectItem value="refinement">Refinamento</SelectItem>
+              <SelectItem value="all">Todas as áreas</SelectItem>
+              {Object.entries(TASK_AREA_LABELS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>{label}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
 
           {/* Member Filter */}
-          <Select value={memberFilter} onValueChange={handleMemberFilter}>
+          <Select value={memberFilter} onValueChange={(v) => { setMemberFilter(v); updateUrlParams('member', v); }}>
             <SelectTrigger className="w-[160px] bg-card flex-shrink-0">
               <SelectValue placeholder="Responsável" />
             </SelectTrigger>
@@ -336,30 +301,16 @@ export default function Tasks() {
             </SelectContent>
           </Select>
 
-          {/* Priority Filter - P0 is highest */}
-          <Select value={priorityFilter} onValueChange={handlePriorityFilter}>
+          {/* Priority Filter */}
+          <Select value={priorityFilter} onValueChange={(v) => { setPriorityFilter(v); updateUrlParams('priority', v); }}>
             <SelectTrigger className="w-[130px] bg-card flex-shrink-0">
               <SelectValue placeholder="Prioridade" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas</SelectItem>
-              <SelectItem value="0">P0 - Crítica</SelectItem>
-              <SelectItem value="1">P1 - Muito Alta</SelectItem>
-              <SelectItem value="2">P2 - Alta</SelectItem>
-              <SelectItem value="3">P3 - Média</SelectItem>
-              <SelectItem value="4">P4 - Baixa</SelectItem>
-              <SelectItem value="5">P5 - Muito Baixa</SelectItem>
-            </SelectContent>
-          </Select>
-
-          {/* Incident Filter */}
-          <Select value={incidentFilter} onValueChange={handleIncidentFilter}>
-            <SelectTrigger className={cn("w-[140px] bg-card flex-shrink-0", incidentFilter === 'true' && "border-warning text-warning")}>
-              <SelectValue placeholder="Intercorrência" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas</SelectItem>
-              <SelectItem value="true">Com Intercorrência</SelectItem>
+              {Object.entries(TASK_PRIORITY_LABELS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>{label}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
 
@@ -379,12 +330,15 @@ export default function Tasks() {
         </div>
 
         {/* View Content */}
-        {viewMode === 'kanban' ? (
-          <KanbanBoard
+        {isLoading ? (
+          <div className="text-center py-8 text-muted-foreground">
+            Carregando tarefas...
+          </div>
+        ) : viewMode === 'kanban' ? (
+          <InternalKanbanBoard
             tasks={filteredTasks}
-            onTaskClick={setSelectedTask}
-            onTaskEdit={handleEditTask}
-            onTaskDelete={setTaskToDelete}
+            onTaskClick={(task) => setEditingTask(task)}
+            onTaskUpdate={updateTask}
             onCreateTask={handleCreateTaskFromKanban}
           />
         ) : (
@@ -392,13 +346,59 @@ export default function Tasks() {
             {/* Tasks Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {filteredTasks.map((task) => (
-                <TaskCard 
+                <Card 
                   key={task.id} 
-                  task={task}
-                  onClick={() => setSelectedTask(task)}
-                  onEdit={() => handleEditTask(task)}
-                  onDelete={() => setTaskToDelete(task)}
-                />
+                  className="hover:shadow-md transition-shadow cursor-pointer"
+                  onClick={() => setEditingTask(task)}
+                >
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <Badge variant="outline" className={cn("text-xs", getPriorityColor(task.priority))}>
+                        {task.priority}
+                      </Badge>
+                      {task.area && (
+                        <Badge variant="secondary" className="text-xs">
+                          {TASK_AREA_LABELS[task.area]}
+                        </Badge>
+                      )}
+                    </div>
+
+                    <h4 className="font-medium text-sm line-clamp-2">{task.title}</h4>
+
+                    {task.project && (
+                      <div className="flex items-center gap-1">
+                        <div 
+                          className="w-2 h-2 rounded-full" 
+                          style={{ backgroundColor: task.project.color }}
+                        />
+                        <span className="text-xs text-muted-foreground truncate">
+                          {task.project.name}
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between">
+                      {task.assignee ? (
+                        <div className="flex items-center gap-1.5">
+                          <Avatar className="h-5 w-5">
+                            <AvatarImage src={task.assignee.photo_url || undefined} />
+                            <AvatarFallback className="text-[10px]">
+                              {task.assignee.name.substring(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-xs text-muted-foreground">
+                            {task.assignee.name.split(' ')[0]}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">Não atribuído</span>
+                      )}
+                      <Badge variant="outline" className="text-xs">
+                        {TASK_STATUS_LABELS[task.status]}
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
               ))}
             </div>
 
@@ -407,7 +407,10 @@ export default function Tasks() {
                 <p className="text-lg text-muted-foreground">Nenhuma tarefa encontrada</p>
                 <p className="text-sm text-muted-foreground mt-1">Tente ajustar os filtros ou crie uma nova tarefa</p>
                 <Button 
-                  onClick={() => setShowCreateModal(true)}
+                  onClick={() => {
+                    setEditingTask(null);
+                    setShowCreateModal(true);
+                  }}
                   className="mt-4 gradient-primary text-white"
                 >
                   <Plus className="w-4 h-4 mr-2" />
@@ -419,29 +422,18 @@ export default function Tasks() {
         )}
       </div>
 
-      {/* View Task Modal */}
-      <TaskDetailModal
-        task={selectedTask}
-        open={!!selectedTask}
-        onClose={() => setSelectedTask(null)}
-        onEdit={() => {
-          if (selectedTask) {
-            setEditingTask(selectedTask);
-            setSelectedTask(null);
-          }
-        }}
-      />
-
       {/* Create/Edit Task Modal */}
-      <TaskFormModal
+      <InternalTaskFormModal
         task={editingTask}
         open={showCreateModal || !!editingTask}
         onClose={() => {
           setShowCreateModal(false);
           setEditingTask(null);
         }}
-        defaultProjectId={selectedProjectId || undefined}
-        defaultSprintId={selectedSprintId || undefined}
+        onSave={handleSaveTask}
+        projects={projects}
+        sprints={sprints}
+        members={members}
         defaultStatus={defaultStatus}
       />
 

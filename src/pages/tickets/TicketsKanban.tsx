@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -11,26 +11,27 @@ import {
   DragEndEvent,
 } from '@dnd-kit/core';
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
-import { useDroppable } from '@dnd-kit/core';
-import { useDraggable } from '@dnd-kit/core';
+import { useDroppable, useDraggable } from '@dnd-kit/core';
 import { 
-  Ticket as TicketType, 
   TicketStatus, 
   TICKET_STATUS_LABELS, 
   TICKET_STATUS_ORDER,
   TICKET_PRIORITY_LABELS,
   TICKET_TYPE_LABELS,
+  Ticket,
 } from '@/types/auth';
 import { Header } from '@/components/layout/Header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Plus, Clock, AlertTriangle, MessageSquare } from 'lucide-react';
+import { Plus, Clock, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useTickets } from '@/hooks/useTickets';
+import { TicketDetailModal } from '@/components/tickets/TicketDetailModal';
+import { useNavigate } from 'react-router-dom';
 
-function TicketCard({ ticket, isDragging }: { ticket: TicketType; isDragging?: boolean }) {
+function TicketCard({ ticket, isDragging, onClick }: { ticket: Ticket; isDragging?: boolean; onClick?: () => void }) {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: ticket.id,
   });
@@ -57,6 +58,7 @@ function TicketCard({ ticket, isDragging }: { ticket: TicketType; isDragging?: b
       style={style}
       {...listeners}
       {...attributes}
+      onClick={onClick}
       className={cn(
         "p-4 rounded-lg border bg-card hover:shadow-md transition-all cursor-grab active:cursor-grabbing",
         isDragging && "opacity-50 shadow-lg",
@@ -102,12 +104,14 @@ function TicketColumn({
   status, 
   title, 
   tickets, 
-  onCreateTicket 
+  onCreateTicket,
+  onTicketClick,
 }: { 
   status: TicketStatus;
   title: string;
-  tickets: TicketType[];
+  tickets: Ticket[];
   onCreateTicket?: () => void;
+  onTicketClick?: (ticket: Ticket) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: status,
@@ -150,7 +154,11 @@ function TicketColumn({
 
       <div className="flex-1 p-2 space-y-2 overflow-y-auto max-h-[calc(100vh-280px)]">
         {tickets.map((ticket) => (
-          <TicketCard key={ticket.id} ticket={ticket} />
+          <TicketCard 
+            key={ticket.id} 
+            ticket={ticket} 
+            onClick={() => onTicketClick?.(ticket)}
+          />
         ))}
         {tickets.length === 0 && (
           <p className="text-center text-sm text-muted-foreground py-4">
@@ -165,9 +173,10 @@ function TicketColumn({
 export default function TicketsKanban() {
   const { authSession } = useAuth();
   const { toast } = useToast();
-  const [tickets, setTickets] = useState<TicketType[]>([]);
-  const [activeTicket, setActiveTicket] = useState<TicketType | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
+  const { tickets, isLoading, updateTicket } = useTickets();
+  const [activeTicket, setActiveTicket] = useState<Ticket | null>(null);
+  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -178,29 +187,8 @@ export default function TicketsKanban() {
     })
   );
 
-  useEffect(() => {
-    const fetchTickets = async () => {
-      setIsLoading(true);
-      try {
-        const { data, error } = await supabase
-          .from('tickets')
-          .select('*')
-          .order('priority')
-          .order('created_at', { ascending: false });
-
-        if (error) throw error;
-        setTickets((data || []) as unknown as TicketType[]);
-      } catch (error) {
-        console.error('Error fetching tickets:', error);
-      }
-      setIsLoading(false);
-    };
-
-    fetchTickets();
-  }, []);
-
   const ticketsByStatus = useMemo(() => {
-    const grouped: Record<TicketStatus, TicketType[]> = {
+    const grouped: Record<TicketStatus, Ticket[]> = {
       aberto: [],
       em_andamento: [],
       aguardando_cliente: [],
@@ -235,23 +223,11 @@ export default function TicketsKanban() {
     if (TICKET_STATUS_ORDER.includes(targetStatus)) {
       const ticket = tickets.find(t => t.id === ticketId);
       if (ticket && ticket.status !== targetStatus) {
-        // Optimistic update
-        setTickets(prev => prev.map(t => 
-          t.id === ticketId 
-            ? { ...t, status: targetStatus, resolved_at: targetStatus === 'concluido' ? new Date() : undefined }
-            : t
-        ));
-
         try {
-          const { error } = await supabase
-            .from('tickets')
-            .update({ 
-              status: targetStatus,
-              resolved_at: targetStatus === 'concluido' ? new Date().toISOString() : null,
-            })
-            .eq('id', ticketId);
-
-          if (error) throw error;
+          await updateTicket(ticketId, { 
+            status: targetStatus,
+            resolved_at: targetStatus === 'concluido' ? new Date() : undefined,
+          });
 
           toast({
             title: 'Status atualizado',
@@ -259,15 +235,6 @@ export default function TicketsKanban() {
           });
         } catch (error) {
           console.error('Error updating ticket:', error);
-          // Revert on error
-          setTickets(prev => prev.map(t => 
-            t.id === ticketId ? ticket : t
-          ));
-          toast({
-            title: 'Erro ao atualizar',
-            description: 'Não foi possível mover o ticket.',
-            variant: 'destructive',
-          });
         }
       }
     }
@@ -299,6 +266,8 @@ export default function TicketsKanban() {
                   status={status}
                   title={TICKET_STATUS_LABELS[status]}
                   tickets={ticketsByStatus[status]}
+                  onCreateTicket={status === 'aberto' ? () => navigate('/tickets/novo') : undefined}
+                  onTicketClick={(ticket) => setSelectedTicketId(ticket.id)}
                 />
               ))}
             </div>
@@ -313,6 +282,12 @@ export default function TicketsKanban() {
           </DndContext>
         )}
       </div>
+
+      <TicketDetailModal
+        ticketId={selectedTicketId}
+        open={!!selectedTicketId}
+        onClose={() => setSelectedTicketId(null)}
+      />
     </div>
   );
 }
