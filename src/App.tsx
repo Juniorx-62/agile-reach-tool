@@ -72,6 +72,7 @@ function TicketRoutes() {
       <Route path="/" element={<TicketsDashboard />} />
       <Route path="/kanban" element={<TicketsKanban />} />
       <Route path="/parceiros" element={<PartnersPage />} />
+      <Route path="/usuarios" element={<InternalUsersPage />} />
     </Routes>
   );
 }
