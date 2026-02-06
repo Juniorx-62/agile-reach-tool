@@ -229,14 +229,14 @@ export function InternalTaskFormModal({
                 Projeto
               </Label>
               <Select
-                value={formData.project_id}
-                onValueChange={(v) => setFormData({ ...formData, project_id: v })}
+                value={formData.project_id || '_none'}
+                onValueChange={(v) => setFormData({ ...formData, project_id: v === '_none' ? '' : v })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione um projeto" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Nenhum</SelectItem>
+                  <SelectItem value="_none">Nenhum</SelectItem>
                   {projects.map((project) => (
                     <SelectItem key={project.id} value={project.id}>
                       <div className="flex items-center gap-2">
@@ -258,14 +258,14 @@ export function InternalTaskFormModal({
                 Sprint
               </Label>
               <Select
-                value={formData.sprint_id}
-                onValueChange={(v) => setFormData({ ...formData, sprint_id: v })}
+                value={formData.sprint_id || '_none'}
+                onValueChange={(v) => setFormData({ ...formData, sprint_id: v === '_none' ? '' : v })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione uma sprint" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Nenhuma</SelectItem>
+                  <SelectItem value="_none">Nenhuma</SelectItem>
                   {sprints.map((sprint) => (
                     <SelectItem key={sprint.id} value={sprint.id}>
                       {sprint.name}
@@ -284,14 +284,14 @@ export function InternalTaskFormModal({
                 Responsável
               </Label>
               <Select
-                value={formData.assignee_id}
-                onValueChange={(v) => setFormData({ ...formData, assignee_id: v })}
+                value={formData.assignee_id || '_none'}
+                onValueChange={(v) => setFormData({ ...formData, assignee_id: v === '_none' ? '' : v })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione um responsável" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Não atribuído</SelectItem>
+                  <SelectItem value="_none">Não atribuído</SelectItem>
                   {members.map((member) => (
                     <SelectItem key={member.id} value={member.id}>
                       <div className="flex items-center gap-2">
@@ -315,14 +315,14 @@ export function InternalTaskFormModal({
                 Área
               </Label>
               <Select
-                value={formData.area}
-                onValueChange={(v) => setFormData({ ...formData, area: v as TaskArea })}
+                value={formData.area || '_none'}
+                onValueChange={(v) => setFormData({ ...formData, area: v === '_none' ? '' : v as TaskArea })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione uma área" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Nenhuma</SelectItem>
+                  <SelectItem value="_none">Nenhuma</SelectItem>
                   {Object.entries(TASK_AREA_LABELS).map(([value, label]) => (
                     <SelectItem key={value} value={value}>
                       {label}
