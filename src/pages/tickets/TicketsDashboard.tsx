@@ -166,7 +166,7 @@ export default function TicketsDashboard() {
                 <Users className="h-4 w-4 mr-2" />
                 Usuários
               </Button>
-              <Button onClick={() => navigate('/tickets/kanban')}>
+              <Button onClick={() => navigate('/tickets/novo')}>
                 <Plus className="h-4 w-4 mr-2" />
                 Novo Ticket
               </Button>
