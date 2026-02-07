@@ -207,6 +207,10 @@ export function InternalKanbanBoard({
   onCreateTask,
 }: InternalKanbanBoardProps) {
   const [activeTask, setActiveTask] = useState<Task | null>(null);
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const [isDraggingScroll, setIsDraggingScroll] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [scrollLeft, setScrollLeft] = useState(0);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -216,6 +220,36 @@ export function InternalKanbanBoard({
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
+
+  // Drag-to-scroll handlers
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (activeTask) return;
+    const container = containerRef.current;
+    if (!container) return;
+    
+    setIsDraggingScroll(true);
+    setStartX(e.pageX - container.offsetLeft);
+    setScrollLeft(container.scrollLeft);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDraggingScroll || activeTask) return;
+    e.preventDefault();
+    const container = containerRef.current;
+    if (!container) return;
+    
+    const x = e.pageX - container.offsetLeft;
+    const walk = (x - startX) * 1.5;
+    container.scrollLeft = scrollLeft - walk;
+  };
+
+  const handleMouseUp = () => {
+    setIsDraggingScroll(false);
+  };
+
+  const handleMouseLeave = () => {
+    setIsDraggingScroll(false);
+  };
 
   const tasksByStatus = useMemo(() => {
     const grouped: Record<TaskStatus, Task[]> = {
@@ -276,17 +310,29 @@ export function InternalKanbanBoard({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-thin">
-        {TASK_STATUS_ORDER.map(status => (
-          <TaskColumn
-            key={status}
-            status={status}
-            title={TASK_STATUS_LABELS[status]}
-            tasks={tasksByStatus[status]}
-            onCreateTask={() => onCreateTask?.(status)}
-            onTaskClick={onTaskClick}
-          />
-        ))}
+      <div 
+        ref={containerRef}
+        className={cn(
+          "w-full overflow-x-auto scrollbar-hidden select-none",
+          !activeTask && "drag-scroll"
+        )}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
+      >
+        <div className="flex gap-4 pb-4 min-w-max px-1">
+          {TASK_STATUS_ORDER.map(status => (
+            <TaskColumn
+              key={status}
+              status={status}
+              title={TASK_STATUS_LABELS[status]}
+              tasks={tasksByStatus[status]}
+              onCreateTask={() => onCreateTask?.(status)}
+              onTaskClick={onTaskClick}
+            />
+          ))}
+        </div>
       </div>
 
       <DragOverlay>
